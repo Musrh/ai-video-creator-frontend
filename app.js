@@ -161,6 +161,7 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
     document.getElementById('resultKeywords').value = data.keywords.join(', ');
     document.getElementById('resultHashtags').value = data.hashtags.join(', ');
     document.getElementById('resultVoiceSelect').value = voiceId;
+    resetTimeline();
     setStatus('✅ Terminé');
     document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
   } catch (err) {
@@ -195,6 +196,175 @@ document.getElementById('regenerateVoiceBtn').addEventListener('click', async ()
     setStatus('✅ Voix mise à jour');
   } catch (err) {
     setStatus('❌ Erreur: ' + err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// =====================================================================
+// --- Éditeur "Images par paragraphe" : timeline, aperçu, génération ---
+// =====================================================================
+
+// Estimation grossière : ~2.5 mots/seconde en narration naturelle.
+// La durée réelle dépend de la voix ElevenLabs et n'est connue qu'au rendu final.
+const WORDS_PER_SECOND = 2.5;
+
+let timelineSegments = []; // [{ text, file, previewUrl }]
+
+function estimateDuration(text) {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, words / WORDS_PER_SECOND);
+}
+
+function resetTimeline() {
+  timelineSegments = [];
+  document.getElementById('timeline').innerHTML = '';
+  document.getElementById('previewTimelineBtn').style.display = 'none';
+  document.getElementById('generateSegmentsBtn').style.display = 'none';
+  document.getElementById('segmentsStatus').textContent = '';
+}
+
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  el.innerHTML = '';
+
+  timelineSegments.forEach((seg, i) => {
+    const dur = estimateDuration(seg.text);
+    const div = document.createElement('div');
+    div.className = 'segment';
+    div.innerHTML = `
+      <button type="button" class="remove-seg" data-i="${i}" title="Supprimer ce paragraphe">×</button>
+      <textarea data-i="${i}">${seg.text}</textarea>
+      <div class="duration">~${dur.toFixed(1)}s (estimation)</div>
+      ${seg.previewUrl ? `<img class="thumb" src="${seg.previewUrl}" />` : '<div class="thumb"></div>'}
+      <input type="file" accept="image/*" data-i="${i}" />
+    `;
+    el.appendChild(div);
+  });
+
+  el.querySelectorAll('textarea').forEach((ta) => {
+    ta.addEventListener('input', (e) => {
+      const i = Number(e.target.dataset.i);
+      timelineSegments[i].text = e.target.value;
+      // On ne re-render pas tout le DOM pour ne pas perdre le focus pendant la frappe,
+      // seule la durée affichée pour ce bloc est mise à jour.
+      const durEl = e.target.parentElement.querySelector('.duration');
+      durEl.textContent = `~${estimateDuration(e.target.value).toFixed(1)}s (estimation)`;
+    });
+  });
+
+  el.querySelectorAll('input[type="file"]').forEach((inp) => {
+    inp.addEventListener('change', (e) => {
+      const i = Number(e.target.dataset.i);
+      const file = e.target.files[0];
+      if (file) {
+        timelineSegments[i].file = file;
+        timelineSegments[i].previewUrl = URL.createObjectURL(file);
+        renderTimeline();
+      }
+    });
+  });
+
+  el.querySelectorAll('.remove-seg').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const i = Number(e.target.dataset.i);
+      timelineSegments.splice(i, 1);
+      renderTimeline();
+    });
+  });
+}
+
+document.getElementById('buildTimelineBtn').addEventListener('click', () => {
+  const script = document.getElementById('resultScript').value.trim();
+  const segmentsStatus = document.getElementById('segmentsStatus');
+  if (!script) { segmentsStatus.textContent = '❌ Le script est vide.'; return; }
+
+  // Un paragraphe = un bloc séparé par une ligne vide dans le script
+  const paragraphs = script.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length === 0) { segmentsStatus.textContent = '❌ Aucun paragraphe détecté.'; return; }
+
+  timelineSegments = paragraphs.map((text) => ({ text, file: null, previewUrl: null }));
+  document.getElementById('previewTimelineBtn').style.display = 'inline-block';
+  document.getElementById('generateSegmentsBtn').style.display = 'inline-block';
+  segmentsStatus.textContent = `${paragraphs.length} paragraphe(s) détecté(s) — associez une image à chacun.`;
+  renderTimeline();
+});
+
+// Aperçu 100% côté navigateur (aucun appel API, donc aucun coût) : diaporama minuté
+// selon les durées estimées, juste pour valider l'enchaînement visuel avant de générer.
+document.getElementById('previewTimelineBtn').addEventListener('click', () => {
+  if (timelineSegments.length === 0) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'preview-overlay';
+  const img = document.createElement('img');
+  const label = document.createElement('div');
+  label.className = 'preview-label';
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = 'Fermer l\'aperçu';
+  overlay.appendChild(img);
+  overlay.appendChild(label);
+  overlay.appendChild(closeBtn);
+  document.body.appendChild(overlay);
+
+  let i = 0;
+  let timer;
+
+  function showNext() {
+    if (i >= timelineSegments.length) { cleanup(); return; }
+    const seg = timelineSegments[i];
+    img.src = seg.previewUrl || '';
+    img.alt = seg.previewUrl ? '' : '(pas encore d\'image pour ce paragraphe)';
+    label.textContent = `Paragraphe ${i + 1}/${timelineSegments.length} — ${seg.text.slice(0, 90)}${seg.text.length > 90 ? '…' : ''}`;
+    const dur = estimateDuration(seg.text);
+    timer = setTimeout(() => { i += 1; showNext(); }, dur * 1000);
+  }
+
+  function cleanup() {
+    clearTimeout(timer);
+    overlay.remove();
+  }
+
+  closeBtn.addEventListener('click', cleanup);
+  showNext();
+});
+
+// Validation finale : synthèse vocale paragraphe par paragraphe + montage côté serveur
+document.getElementById('generateSegmentsBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('generateSegmentsBtn');
+  const segmentsStatus = document.getElementById('segmentsStatus');
+  const voiceId = document.getElementById('resultVoiceSelect').value;
+  const subject = document.getElementById('subject').value.trim();
+
+  if (timelineSegments.length === 0) {
+    segmentsStatus.textContent = '❌ Construisez d\'abord la timeline.';
+    return;
+  }
+  if (timelineSegments.some((s) => !s.file)) {
+    segmentsStatus.textContent = '❌ Chaque paragraphe doit avoir une image associée.';
+    return;
+  }
+
+  btn.disabled = true;
+  segmentsStatus.textContent = '⏳ Génération finale (narration par paragraphe + montage)... cela peut prendre 1-2 minutes';
+
+  const form = new FormData();
+  form.append('voiceId', voiceId);
+  form.append('subject', subject);
+  form.append('segments', JSON.stringify(timelineSegments.map((s) => s.text)));
+  timelineSegments.forEach((s) => form.append('images', s.file));
+
+  try {
+    const res = await fetch(apiUrl('/api/generate-video-segments'), { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('resultVideo').src = apiUrl(data.videoUrl);
+    segmentsStatus.textContent = '✅ Vidéo finale générée avec vos images par paragraphe.';
+    document.getElementById('resultVideo').scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    segmentsStatus.textContent = '❌ Erreur: ' + err.message;
   } finally {
     btn.disabled = false;
   }

@@ -93,6 +93,22 @@
         <label for="resultVoiceSelect">Nouvelle voix</label>
         <select id="resultVoiceSelect"></select>
         <button type="button" id="regenerateVoiceBtn">🔁 Régénérer avec cette voix</button>
+
+        <hr />
+        <h3>Images par paragraphe</h3>
+        <p class="hint">
+          Divisez le script ci-dessus en paragraphes (laissez une ligne vide entre chaque partie/sujet), construisez la
+          timeline, associez une image à chaque paragraphe, prévisualisez, puis validez pour générer la vidéo finale
+          avec ces images. La durée affichée sur chaque bloc est une <strong>estimation</strong> (la durée réelle dépend
+          de la voix) — raccourcissez ou allongez le texte d'un bloc pour ajuster son timing.
+        </p>
+        <button type="button" id="buildTimelineBtn">🧩 Construire la timeline depuis le script</button>
+        <div id="timeline" class="timeline"></div>
+        <div class="timeline-actions">
+          <button type="button" id="previewTimelineBtn" style="display:none">▶️ Aperçu (sans générer, gratuit)</button>
+          <button type="button" id="generateSegmentsBtn" style="display:none">✅ Valider et générer la vidéo finale</button>
+        </div>
+        <p id="segmentsStatus" class="hint"></p>
       </section>
 
       <p id="status" class="hint"></p>
