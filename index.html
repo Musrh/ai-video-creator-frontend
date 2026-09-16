@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Video Creator</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🎬 AI Video Creator</h1>
+      <p>Générez une vidéo, sa description, ses mots-clés et ses hashtags à partir d'un sujet.</p>
+    </header>
+
+    <main>
+      <form id="mainForm">
+        <section class="card">
+          <h2>1. Sujet de la vidéo</h2>
+          <label for="subject">Sur quoi doit porter la vidéo ?</label>
+          <textarea id="subject" required placeholder="Ex: Les bienfaits du jeûne intermittent"></textarea>
+        </section>
+
+        <section class="card">
+          <h2>2. Vidéo source (optionnel)</h2>
+          <p class="hint">Utilisée comme source d'information (transcrite automatiquement) et comme fond visuel. URL YouTube, TikTok ou lien direct (.mp4) acceptés.</p>
+          <div class="tabs">
+            <label><input type="radio" name="sourceMode" value="none" checked /> Aucune</label>
+            <label><input type="radio" name="sourceMode" value="url" /> URL</label>
+            <label><input type="radio" name="sourceMode" value="upload" /> Upload</label>
+          </div>
+          <input type="url" id="videoUrl" placeholder="https://..." style="display:none" />
+          <input type="file" id="sourceVideo" accept="video/*" style="display:none" />
+
+          <button type="button" id="analyzeBtn" style="display:none">🔍 Lire la vidéo source</button>
+          <p id="analyzeStatus" class="hint"></p>
+
+          <div id="inspirationBlock" style="display:none">
+            <p class="hint">Suggestions générées à partir du contenu de la vidéo source, à titre d'inspiration (non utilisées telles quelles) :</p>
+            <label>Description inspirée de la source</label>
+            <p id="inspDescription" class="inspiration"></p>
+            <label>Mots-clés inspirés de la source</label>
+            <p id="inspKeywords" class="inspiration"></p>
+            <label>Hashtags inspirés de la source</label>
+            <p id="inspHashtags" class="inspiration"></p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>3. Voix de narration</h2>
+          <div class="tabs">
+            <label><input type="radio" name="voiceMode" value="existing" checked /> Voix existante</label>
+            <label><input type="radio" name="voiceMode" value="clone" /> Cloner une voix</label>
+          </div>
+
+          <div id="existingVoiceBlock">
+            <label for="voiceSelect">Choisir une voix</label>
+            <select id="voiceSelect"></select>
+          </div>
+
+          <div id="cloneVoiceBlock" style="display:none">
+            <label for="voiceName">Nom de la nouvelle voix</label>
+            <input type="text" id="voiceName" placeholder="Ma voix" />
+            <label for="voiceSample">Échantillon audio (fichier à uploader)</label>
+            <input type="file" id="voiceSample" accept="audio/*" />
+            <button type="button" id="cloneBtn">Cloner cette voix</button>
+            <p id="cloneStatus" class="hint"></p>
+          </div>
+        </section>
+
+        <button type="submit" id="generateBtn">✨ Générer la vidéo</button>
+      </form>
+
+      <section id="resultCard" class="card" style="display:none">
+        <h2>Résultat</h2>
+        <video id="resultVideo" controls></video>
+
+        <label>Script (narration)</label>
+        <textarea id="resultScript"></textarea>
+
+        <label>Description</label>
+        <textarea id="resultDescription"></textarea>
+
+        <label>Mots-clés (séparés par des virgules)</label>
+        <input type="text" id="resultKeywords" />
+
+        <label>Hashtags (séparés par des virgules)</label>
+        <input type="text" id="resultHashtags" />
+
+        <hr />
+        <h3>Changer la voix</h3>
+        <p class="hint">Réutilise le script ci-dessus (modifiez-le si besoin) et la même vidéo source, sans tout régénérer.</p>
+        <label for="resultVoiceSelect">Nouvelle voix</label>
+        <select id="resultVoiceSelect"></select>
+        <button type="button" id="regenerateVoiceBtn">🔁 Régénérer avec cette voix</button>
+      </section>
+
+      <p id="status" class="hint"></p>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
