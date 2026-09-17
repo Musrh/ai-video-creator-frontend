@@ -10,6 +10,218 @@ function setStatus(msg) {
   statusEl.textContent = msg;
 }
 
+// =====================================================================
+// --- Vérification par SMS (quota d'essais gratuits) ---
+// =====================================================================
+
+let verifyToken = localStorage.getItem('aivc_verify_token') || null;
+let verifyPhone = localStorage.getItem('aivc_verify_phone') || null;
+
+function lockMainForm(locked) {
+  document.getElementById('mainForm').classList.toggle('locked', locked);
+}
+
+// --- Écran paywall (affiché quand le quota gratuit est épuisé) ---
+function showPaywall(phone) {
+  document.getElementById('paywallPhone').textContent = phone || '';
+  document.getElementById('paywallStatus').textContent = '';
+  document.getElementById('paywallOverlay').style.display = 'flex';
+}
+function hidePaywall() {
+  document.getElementById('paywallOverlay').style.display = 'none';
+}
+document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
+
+// --- Paiement PayPal : crée la commande côté serveur, redirige vers PayPal ---
+async function payWithPaypal(plan) {
+  const paywallStatus = document.getElementById('paywallStatus');
+  paywallStatus.textContent = '⏳ Redirection vers PayPal...';
+  try {
+    const res = await fetch(apiUrl('/api/payment/paypal/create'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: verifyPhone, plan }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    window.location.href = data.approveUrl;
+  } catch (e) {
+    paywallStatus.textContent = '❌ Erreur PayPal: ' + e.message;
+  }
+}
+
+// --- Paiement Stripe : crée une session Checkout côté serveur, redirige vers Stripe ---
+async function payWithStripe(plan) {
+  const paywallStatus = document.getElementById('paywallStatus');
+  paywallStatus.textContent = '⏳ Redirection vers Stripe...';
+  try {
+    const res = await fetch(apiUrl('/api/payment/stripe/create'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: verifyPhone, plan }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    window.location.href = data.checkoutUrl;
+  } catch (e) {
+    paywallStatus.textContent = '❌ Erreur Stripe: ' + e.message;
+  }
+}
+
+// --- Paiement CMI : récupère les paramètres, soumet un vrai formulaire HTML (pas un fetch) ---
+async function payWithCmi(plan) {
+  const paywallStatus = document.getElementById('paywallStatus');
+  paywallStatus.textContent = '⏳ Redirection vers la page de paiement CMI...';
+  try {
+    const res = await fetch(apiUrl('/api/payment/cmi/create'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: verifyPhone, plan }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const form = document.getElementById('cmiRedirectForm');
+    form.action = data.gatewayUrl;
+    form.innerHTML = '';
+    Object.entries(data.params).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+    form.submit();
+  } catch (e) {
+    paywallStatus.textContent = '❌ Erreur CMI: ' + e.message;
+  }
+}
+
+document.querySelectorAll('.pay-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const plan = btn.dataset.plan; // 'single' | 'subscription'
+    const provider = btn.dataset.provider; // 'paypal' | 'stripe' | 'cmi'
+    if (!verifyPhone) {
+      document.getElementById('paywallStatus').textContent = '❌ Numéro non identifié, revérifiez-vous par SMS.';
+      return;
+    }
+    if (provider === 'paypal') payWithPaypal(plan);
+    else if (provider === 'stripe') payWithStripe(plan);
+    else if (provider === 'cmi') payWithCmi(plan);
+  });
+});
+
+async function refreshOtpStatus() {
+  const otpStatus = document.getElementById('otpStatus');
+  if (!verifyToken) {
+    lockMainForm(true);
+    hidePaywall();
+    return;
+  }
+  try {
+    const res = await fetch(apiUrl('/api/otp/status'), {
+      headers: { 'x-verify-token': verifyToken },
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('otpPhoneBlock').style.display = 'none';
+    document.getElementById('otpCodeBlock').style.display = 'none';
+
+    const hasAccess = data.freeRemaining > 0 || data.subscriptionActive || data.paidCredits > 0;
+
+    let label;
+    if (data.subscriptionActive) {
+      label = `✅ Numéro vérifié (${data.phone}) — abonnement actif jusqu'au ${new Date(data.subscriptionUntil).toLocaleDateString('fr-FR')}.`;
+    } else if (data.paidCredits > 0) {
+      label = `✅ Numéro vérifié (${data.phone}) — ${data.paidCredits} crédit(s) vidéo payé(s) restant(s).`;
+    } else {
+      label = `✅ Numéro vérifié (${data.phone}) — ${data.freeRemaining} génération(s) gratuite(s) restante(s) sur 2.`;
+    }
+    otpStatus.textContent = label;
+
+    lockMainForm(!hasAccess);
+    if (!hasAccess) {
+      showPaywall(data.phone);
+    } else {
+      hidePaywall();
+    }
+  } catch (e) {
+    verifyToken = null;
+    verifyPhone = null;
+    localStorage.removeItem('aivc_verify_token');
+    localStorage.removeItem('aivc_verify_phone');
+    document.getElementById('otpPhoneBlock').style.display = 'block';
+    lockMainForm(true);
+    hidePaywall();
+  }
+}
+refreshOtpStatus();
+
+document.getElementById('otpSendBtn').addEventListener('click', async () => {
+  const phone = document.getElementById('otpPhone').value.trim();
+  const otpStatus = document.getElementById('otpStatus');
+  if (!phone) { otpStatus.textContent = 'Renseignez un numéro.'; return; }
+
+  otpStatus.textContent = '⏳ Envoi du code...';
+  try {
+    const res = await fetch(apiUrl('/api/otp/send'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    verifyPhone = phone;
+    document.getElementById('otpCodeBlock').style.display = 'block';
+    otpStatus.textContent = '✅ Code envoyé par SMS.';
+  } catch (e) {
+    otpStatus.textContent = '❌ Erreur: ' + e.message;
+  }
+});
+
+document.getElementById('otpVerifyBtn').addEventListener('click', async () => {
+  const code = document.getElementById('otpCode').value.trim();
+  const otpStatus = document.getElementById('otpStatus');
+  if (!code) { otpStatus.textContent = 'Renseignez le code reçu.'; return; }
+
+  otpStatus.textContent = '⏳ Vérification...';
+  try {
+    const res = await fetch(apiUrl('/api/otp/verify'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: verifyPhone, code }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    verifyToken = data.token;
+    localStorage.setItem('aivc_verify_token', verifyToken);
+    localStorage.setItem('aivc_verify_phone', verifyPhone);
+    await refreshOtpStatus();
+  } catch (e) {
+    otpStatus.textContent = '❌ Erreur: ' + e.message;
+  }
+});
+
+// Si on revient d'un paiement (PayPal/Stripe/CMI redirige vers ?payment=success|failed|cancelled|error)
+(function handlePaymentReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get('payment');
+  if (!payment) return;
+  const messages = {
+    success: '✅ Paiement confirmé — accès débloqué.',
+    failed: '❌ Le paiement a échoué.',
+    cancelled: 'Paiement annulé.',
+    error: '❌ Une erreur est survenue pendant le paiement.',
+  };
+  setStatus(messages[payment] || '');
+  window.history.replaceState({}, document.title, window.location.pathname);
+})();
+
+// =====================================================================
+
 // --- Gestion des onglets source vidéo ---
 document.querySelectorAll('input[name="sourceMode"]').forEach((r) => {
   r.addEventListener('change', () => {
@@ -17,7 +229,6 @@ document.querySelectorAll('input[name="sourceMode"]').forEach((r) => {
     document.getElementById('videoUrl').style.display = mode === 'url' ? 'block' : 'none';
     document.getElementById('sourceVideo').style.display = mode === 'upload' ? 'block' : 'none';
     document.getElementById('analyzeBtn').style.display = mode === 'none' ? 'none' : 'inline-block';
-    // On change de source : les infos analysées précédemment ne sont plus valables
     state.sourceFile = null;
     state.sourceInfo = null;
     document.getElementById('inspirationBlock').style.display = 'none';
@@ -137,7 +348,6 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
   form.append('voiceId', voiceId);
 
   if (state.sourceFile) {
-    // Vidéo source déjà analysée : on réutilise le fichier + le transcript, pas besoin de re-uploader/re-télécharger
     form.append('sourceFile', state.sourceFile);
     if (state.sourceInfo) form.append('sourceInfo', state.sourceInfo);
   } else if (sourceMode === 'url') {
@@ -148,8 +358,22 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
   }
 
   try {
-    const res = await fetch(apiUrl('/api/generate-video'), { method: 'POST', body: form });
+    const res = await fetch(apiUrl('/api/generate-video'), {
+      method: 'POST',
+      headers: { 'x-verify-token': verifyToken || '' },
+      body: form,
+    });
     const data = await res.json();
+
+    if (res.status === 402) {
+      setStatus('');
+      await refreshOtpStatus();
+      return;
+    }
+    if (res.status === 401) {
+      setStatus('❌ Vérifiez votre numéro par SMS ci-dessus avant de générer.');
+      return;
+    }
     if (data.error) throw new Error(data.error);
 
     if (data.sourceFile) state.sourceFile = data.sourceFile;
@@ -163,6 +387,7 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
     document.getElementById('resultVoiceSelect').value = voiceId;
     resetTimeline();
     setStatus('✅ Terminé');
+    await refreshOtpStatus();
     document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
   } catch (err) {
     setStatus('❌ Erreur: ' + err.message);
@@ -205,11 +430,8 @@ document.getElementById('regenerateVoiceBtn').addEventListener('click', async ()
 // --- Éditeur "Images par paragraphe" : timeline, aperçu, génération ---
 // =====================================================================
 
-// Estimation grossière : ~2.5 mots/seconde en narration naturelle.
-// La durée réelle dépend de la voix ElevenLabs et n'est connue qu'au rendu final.
 const WORDS_PER_SECOND = 2.5;
-
-let timelineSegments = []; // [{ text, file, previewUrl }]
+let timelineSegments = [];
 
 function estimateDuration(text) {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -246,8 +468,6 @@ function renderTimeline() {
     ta.addEventListener('input', (e) => {
       const i = Number(e.target.dataset.i);
       timelineSegments[i].text = e.target.value;
-      // On ne re-render pas tout le DOM pour ne pas perdre le focus pendant la frappe,
-      // seule la durée affichée pour ce bloc est mise à jour.
       const durEl = e.target.parentElement.querySelector('.duration');
       durEl.textContent = `~${estimateDuration(e.target.value).toFixed(1)}s (estimation)`;
     });
@@ -279,7 +499,6 @@ document.getElementById('buildTimelineBtn').addEventListener('click', () => {
   const segmentsStatus = document.getElementById('segmentsStatus');
   if (!script) { segmentsStatus.textContent = '❌ Le script est vide.'; return; }
 
-  // Un paragraphe = un bloc séparé par une ligne vide dans le script
   const paragraphs = script.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   if (paragraphs.length === 0) { segmentsStatus.textContent = '❌ Aucun paragraphe détecté.'; return; }
 
@@ -290,8 +509,6 @@ document.getElementById('buildTimelineBtn').addEventListener('click', () => {
   renderTimeline();
 });
 
-// Aperçu 100% côté navigateur (aucun appel API, donc aucun coût) : diaporama minuté
-// selon les durées estimées, juste pour valider l'enchaînement visuel avant de générer.
 document.getElementById('previewTimelineBtn').addEventListener('click', () => {
   if (timelineSegments.length === 0) return;
 
@@ -330,7 +547,6 @@ document.getElementById('previewTimelineBtn').addEventListener('click', () => {
   showNext();
 });
 
-// Validation finale : synthèse vocale paragraphe par paragraphe + montage côté serveur
 document.getElementById('generateSegmentsBtn').addEventListener('click', async () => {
   const btn = document.getElementById('generateSegmentsBtn');
   const segmentsStatus = document.getElementById('segmentsStatus');
@@ -356,12 +572,27 @@ document.getElementById('generateSegmentsBtn').addEventListener('click', async (
   timelineSegments.forEach((s) => form.append('images', s.file));
 
   try {
-    const res = await fetch(apiUrl('/api/generate-video-segments'), { method: 'POST', body: form });
+    const res = await fetch(apiUrl('/api/generate-video-segments'), {
+      method: 'POST',
+      headers: { 'x-verify-token': verifyToken || '' },
+      body: form,
+    });
     const data = await res.json();
+
+    if (res.status === 402) {
+      segmentsStatus.textContent = '';
+      await refreshOtpStatus();
+      return;
+    }
+    if (res.status === 401) {
+      segmentsStatus.textContent = '❌ Vérifiez votre numéro par SMS avant de générer.';
+      return;
+    }
     if (data.error) throw new Error(data.error);
 
     document.getElementById('resultVideo').src = apiUrl(data.videoUrl);
     segmentsStatus.textContent = '✅ Vidéo finale générée avec vos images par paragraphe.';
+    await refreshOtpStatus();
     document.getElementById('resultVideo').scrollIntoView({ behavior: 'smooth' });
   } catch (err) {
     segmentsStatus.textContent = '❌ Erreur: ' + err.message;

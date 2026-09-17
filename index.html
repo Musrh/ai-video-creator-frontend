@@ -14,7 +14,26 @@
     </header>
 
     <main>
-      <form id="mainForm">
+      <section class="card" id="otpCard">
+        <h2>0. Vérification par SMS</h2>
+        <p class="hint">2 générations gratuites par numéro vérifié. Vérifiez votre numéro pour débloquer le formulaire ci-dessous.</p>
+
+        <div id="otpPhoneBlock">
+          <label for="otpPhone">Numéro de téléphone</label>
+          <input type="tel" id="otpPhone" placeholder="+212612345678" />
+          <button type="button" id="otpSendBtn">📩 Envoyer le code</button>
+        </div>
+
+        <div id="otpCodeBlock" style="display:none">
+          <label for="otpCode">Code reçu par SMS</label>
+          <input type="text" id="otpCode" inputmode="numeric" maxlength="6" placeholder="123456" />
+          <button type="button" id="otpVerifyBtn">✅ Vérifier</button>
+        </div>
+
+        <p id="otpStatus" class="hint"></p>
+      </section>
+
+      <form id="mainForm" class="locked">
         <section class="card">
           <h2>1. Sujet de la vidéo</h2>
           <label for="subject">Sur quoi doit porter la vidéo ?</label>
@@ -100,7 +119,8 @@
           Divisez le script ci-dessus en paragraphes (laissez une ligne vide entre chaque partie/sujet), construisez la
           timeline, associez une image à chaque paragraphe, prévisualisez, puis validez pour générer la vidéo finale
           avec ces images. La durée affichée sur chaque bloc est une <strong>estimation</strong> (la durée réelle dépend
-          de la voix) — raccourcissez ou allongez le texte d'un bloc pour ajuster son timing.
+          de la voix) — raccourcissez ou allongez le texte d'un bloc pour ajuster son timing. Cette action consomme
+          aussi votre quota / accès payant.
         </p>
         <button type="button" id="buildTimelineBtn">🧩 Construire la timeline depuis le script</button>
         <div id="timeline" class="timeline"></div>
@@ -114,6 +134,40 @@
       <p id="status" class="hint"></p>
     </main>
   </div>
+
+  <!-- Écran d'explication affiché quand le quota gratuit est épuisé (caché par défaut) -->
+  <div id="paywallOverlay" class="paywall-overlay" style="display:none">
+    <div class="paywall-box">
+      <button type="button" id="paywallCloseBtn" class="paywall-close" title="Fermer">×</button>
+      <h2>🎬 Vos 2 essais gratuits sont utilisés</h2>
+      <p class="hint">
+        Ce numéro (<span id="paywallPhone"></span>) a déjà généré 2 vidéos gratuites.
+        Pour continuer à créer des vidéos, choisissez une des options ci-dessous.
+      </p>
+
+      <div class="paywall-options">
+        <div class="paywall-option">
+          <h3>Paiement à la vidéo — 2$</h3>
+          <p class="hint">Sans engagement. Payez uniquement quand vous générez une nouvelle vidéo.</p>
+          <button type="button" class="pay-btn" data-plan="single" data-provider="paypal">PayPal</button>
+          <button type="button" class="pay-btn" data-plan="single" data-provider="stripe">Carte bancaire (Stripe)</button>
+          <button type="button" class="pay-btn" data-plan="single" data-provider="cmi">Carte marocaine (CMI)</button>
+        </div>
+        <div class="paywall-option">
+          <h3>Abonnement mensuel — 1$</h3>
+          <p class="hint">Générations illimitées pendant 30 jours, sans engagement au-delà.</p>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal">PayPal</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe">Carte bancaire (Stripe)</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi">Carte marocaine (CMI)</button>
+        </div>
+      </div>
+
+      <p id="paywallStatus" class="hint"></p>
+    </div>
+  </div>
+
+  <!-- Formulaire technique utilisé pour rediriger vers la page de paiement CMI (soumission réelle, pas fetch) -->
+  <form id="cmiRedirectForm" method="POST" style="display:none"></form>
 
   <script src="config.js"></script>
   <script src="app.js"></script>
