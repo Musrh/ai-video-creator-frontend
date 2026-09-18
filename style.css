@@ -18,7 +18,7 @@ header p { color: #aaa; margin-top: 0; }
 .card h2 { margin-top: 0; font-size: 1.05rem; }
 .card h3 { font-size: 0.95rem; margin-bottom: 4px; }
 label { display: block; margin: 10px 0 6px; font-size: 0.9rem; color: #cfcfe0; }
-textarea, input[type="text"], input[type="url"], select {
+textarea, input[type="text"], input[type="url"], input[type="tel"], select {
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
@@ -69,6 +69,21 @@ button {
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
 #status { text-align: center; margin-top: 10px; }
+
+/* --- Vérification SMS --- */
+#otpCard { border-color: #6a5cff; }
+#otpSendBtn, #otpVerifyBtn {
+  background: linear-gradient(90deg, #6a5cff, #ff5ca8);
+  color: #fff;
+  margin-top: 8px;
+}
+
+/* Formulaire principal verrouillé tant que le numéro n'est pas vérifié / quota épuisé */
+#mainForm.locked {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: grayscale(0.6);
+}
 
 /* --- Timeline / éditeur d'images par paragraphe --- */
 .timeline {
@@ -169,5 +184,57 @@ video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
 .preview-overlay button {
   margin-top: 18px;
   background: #2a2a44;
+  color: #fff;
+}
+
+/* --- Écran paywall (quota gratuit épuisé) --- */
+.paywall-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.paywall-box {
+  background: #1a1a2e;
+  border: 1px solid #6a5cff;
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 480px;
+  width: 100%;
+  position: relative;
+}
+.paywall-box h2 { margin-top: 0; font-size: 1.15rem; }
+.paywall-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: transparent;
+  color: #8a8aa3;
+  font-size: 1.2rem;
+  padding: 4px 8px;
+  border-radius: 50%;
+}
+.paywall-options {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.paywall-option {
+  flex: 1 1 190px;
+  background: #12121f;
+  border: 1px solid #33334d;
+  border-radius: 12px;
+  padding: 16px;
+}
+.paywall-option h3 { margin-top: 0; font-size: 0.95rem; }
+.paywall-option button {
+  width: 100%;
+  margin-top: 10px;
+  background: linear-gradient(90deg, #6a5cff, #ff5ca8);
   color: #fff;
 }

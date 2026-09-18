@@ -15,17 +15,22 @@
 
     <main>
       <section class="card" id="otpCard">
-        <h2>0. Vérification par SMS</h2>
-        <p class="hint">2 générations gratuites par numéro vérifié. Vérifiez votre numéro pour débloquer le formulaire ci-dessous.</p>
+        <h2>0. Vérification</h2>
+        <p class="hint">2 générations gratuites par identifiant vérifié. Vérifiez-vous pour débloquer le formulaire ci-dessous.</p>
 
-        <div id="otpPhoneBlock">
-          <label for="otpPhone">Numéro de téléphone</label>
-          <input type="tel" id="otpPhone" placeholder="+212612345678" />
+        <div class="tabs">
+          <label><input type="radio" name="otpMode" value="phone" checked /> Téléphone (SMS)</label>
+          <label><input type="radio" name="otpMode" value="email" /> Email</label>
+        </div>
+
+        <div id="otpIdentifierBlock">
+          <label for="otpIdentifier" id="otpIdentifierLabel">Numéro de téléphone</label>
+          <input type="tel" id="otpIdentifier" placeholder="+212612345678" />
           <button type="button" id="otpSendBtn">📩 Envoyer le code</button>
         </div>
 
         <div id="otpCodeBlock" style="display:none">
-          <label for="otpCode">Code reçu par SMS</label>
+          <label for="otpCode">Code reçu</label>
           <input type="text" id="otpCode" inputmode="numeric" maxlength="6" placeholder="123456" />
           <button type="button" id="otpVerifyBtn">✅ Vérifier</button>
         </div>
@@ -141,7 +146,7 @@
       <button type="button" id="paywallCloseBtn" class="paywall-close" title="Fermer">×</button>
       <h2>🎬 Vos 2 essais gratuits sont utilisés</h2>
       <p class="hint">
-        Ce numéro (<span id="paywallPhone"></span>) a déjà généré 2 vidéos gratuites.
+        Cet identifiant (<span id="paywallIdentifier"></span>) a déjà généré 2 vidéos gratuites.
         Pour continuer à créer des vidéos, choisissez une des options ci-dessous.
       </p>
 
