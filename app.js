@@ -51,6 +51,28 @@ function hidePaywall() {
 }
 document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
 
+// Bouton de test (dev uniquement, désactivé côté serveur si ENABLE_DEBUG_ROUTES n'est pas défini) :
+// épuise le quota gratuit de l'identifiant courant, pour tester le paywall/paiement sans
+// consommer 2 vraies générations à chaque fois.
+document.getElementById('debugExhaustBtn').addEventListener('click', async () => {
+  const otpStatus = document.getElementById('otpStatus');
+  try {
+    const res = await fetch(apiUrl('/api/otp/debug-exhaust'), {
+      method: 'POST',
+      headers: { 'x-verify-token': verifyToken || '' },
+    });
+    const data = await res.json();
+    if (res.status === 404) {
+      otpStatus.textContent = 'Route de debug désactivée (ENABLE_DEBUG_ROUTES manquant côté serveur).';
+      return;
+    }
+    if (data.error) throw new Error(data.error);
+    await refreshOtpStatus();
+  } catch (e) {
+    otpStatus.textContent = '❌ Erreur: ' + e.message;
+  }
+});
+
 async function payWithPaypal(plan) {
   const paywallStatus = document.getElementById('paywallStatus');
   paywallStatus.textContent = '⏳ Redirection vers PayPal...';
@@ -155,6 +177,7 @@ async function refreshOtpStatus() {
       label = `✅ Vérifié (${data.identifier}) — ${data.freeRemaining} génération(s) gratuite(s) restante(s) sur 2.`;
     }
     otpStatus.textContent = label;
+    document.getElementById('debugExhaustBtn').style.display = 'inline-block';
 
     lockMainForm(!hasAccess);
     if (!hasAccess) {
