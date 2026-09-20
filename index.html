@@ -9,14 +9,29 @@
 <body>
   <div class="app">
     <header>
-      <h1>🎬 AI Video Creator</h1>
-      <p>Générez une vidéo, sa description, ses mots-clés et ses hashtags à partir d'un sujet.</p>
+      <div class="header-top">
+        <div>
+          <h1>🎬 AI Video Creator</h1>
+          <p>Générez une vidéo, sa description, ses mots-clés et ses hashtags à partir d'un sujet.</p>
+        </div>
+
+        <div id="accountMenu" class="account-menu" style="display:none">
+          <button type="button" id="accountMenuBtn" class="account-menu-btn">👤 Compte ▾</button>
+          <div id="accountMenuDropdown" class="account-menu-dropdown" style="display:none">
+            <p id="accountEmail" class="hint"></p>
+            <p id="accountPlan" class="hint"></p>
+            <button type="button" id="upgradeBtn">⭐ Voir les plans</button>
+            <button type="button" id="debugExhaustBtn" style="display:none">🧪 (Dev) Épuiser mon quota</button>
+            <button type="button" id="logoutBtn">🚪 Se déconnecter</button>
+          </div>
+        </div>
+      </div>
     </header>
 
     <main>
       <section class="card" id="otpCard">
         <h2>0. Vérification</h2>
-        <p class="hint">2 générations gratuites par identifiant vérifié. Vérifiez-vous pour débloquer le formulaire ci-dessous.</p>
+        <p class="hint">2 vidéos gratuites par identifiant vérifié. Vérifiez-vous pour débloquer le formulaire ci-dessous.</p>
 
         <div class="tabs">
           <label><input type="radio" name="otpMode" value="phone" checked /> Téléphone (SMS)</label>
@@ -36,8 +51,6 @@
         </div>
 
         <p id="otpStatus" class="hint"></p>
-        <button type="button" id="logoutBtn" style="display:none">🚪 Se déconnecter</button>
-        <button type="button" id="debugExhaustBtn" style="display:none">🧪 (Dev) Épuiser mon quota pour tester le paywall</button>
       </section>
 
       <form id="mainForm" class="locked">
@@ -100,6 +113,7 @@
       <section id="resultCard" class="card" style="display:none">
         <h2>Résultat</h2>
         <video id="resultVideo" controls></video>
+        <a id="downloadVideoLink" href="#" download="ma-video.mp4" class="download-link" style="display:none">⬇️ Télécharger la vidéo</a>
 
         <label>Script (narration)</label>
         <textarea id="resultScript"></textarea>
@@ -142,34 +156,66 @@
     </main>
   </div>
 
-  <!-- Écran d'explication affiché quand le quota gratuit est épuisé (caché par défaut) -->
+  <!-- Écran affiché quand les 2 vidéos gratuites sont épuisées (caché par défaut) -->
   <div id="paywallOverlay" class="paywall-overlay" style="display:none">
     <div class="paywall-box">
       <button type="button" id="paywallCloseBtn" class="paywall-close" title="Fermer">×</button>
-      <h2>🎬 Vos 2 essais gratuits sont utilisés</h2>
+      <h2>📥 Débloquez vos prochaines vidéos</h2>
       <p class="hint">
-        Cet identifiant (<span id="paywallIdentifier"></span>) a déjà généré 2 vidéos gratuites.
-        Pour continuer à créer des vidéos, choisissez une des options ci-dessous.
+        Cet identifiant (<span id="paywallIdentifier"></span>) a déjà utilisé ses 2 vidéos gratuites.
+        Choisissez une option pour créer et télécharger une nouvelle vidéo.
       </p>
 
       <div class="paywall-options">
         <div class="paywall-option">
-          <h3>Paiement à la vidéo — 2$</h3>
-          <p class="hint">Sans engagement. Payez uniquement quand vous générez une nouvelle vidéo.</p>
+          <h3>Sans engagement — 2$/vidéo</h3>
+          <p class="hint">Payez uniquement quand vous en avez besoin, sans abonnement.</p>
           <button type="button" class="pay-btn" data-plan="single" data-provider="paypal">PayPal</button>
           <button type="button" class="pay-btn" data-plan="single" data-provider="stripe">Carte bancaire (Stripe)</button>
           <button type="button" class="pay-btn" data-plan="single" data-provider="cmi">Carte marocaine (CMI)</button>
         </div>
         <div class="paywall-option">
-          <h3>Abonnement mensuel — 1$</h3>
-          <p class="hint">Générations illimitées pendant 30 jours, sans engagement au-delà.</p>
+          <h3>Mensuel — 1$/mois</h3>
+          <p class="hint">Vidéos illimitées pendant 30 jours, sans engagement au-delà.</p>
           <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal">PayPal</button>
           <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe">Carte bancaire (Stripe)</button>
           <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi">Carte marocaine (CMI)</button>
         </div>
       </div>
 
-      <p id="paywallStatus" class="hint"></p>
+      <p id="paywallStatus" class="hint pay-status"></p>
+    </div>
+  </div>
+
+  <!-- Page "Plans", ouverte depuis le menu compte (caché par défaut) -->
+  <div id="plansOverlay" class="paywall-overlay" style="display:none">
+    <div class="paywall-box">
+      <button type="button" id="plansCloseBtn" class="paywall-close" title="Fermer">×</button>
+      <h2>📋 Nos formules</h2>
+
+      <div class="paywall-options">
+        <div class="paywall-option">
+          <h3>Gratuit</h3>
+          <p class="hint">2 vidéos incluses par identifiant vérifié (téléphone ou email) — sans carte bancaire.</p>
+        </div>
+        <div class="paywall-option">
+          <h3>Sans engagement — 2$/vidéo</h3>
+          <p class="hint">
+            Une fois vos 2 vidéos gratuites utilisées, débloquez le téléchargement d'une vidéo supplémentaire à
+            l'unité, sans abonnement. Cette option apparaît directement au moment où vous en avez besoin, lors de la
+            création d'une nouvelle vidéo.
+          </p>
+        </div>
+        <div class="paywall-option">
+          <h3>Mensuel — 1$/mois</h3>
+          <p class="hint">Vidéos illimitées pendant 30 jours, sans engagement au-delà.</p>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal">PayPal</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe">Carte bancaire (Stripe)</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi">Carte marocaine (CMI)</button>
+        </div>
+      </div>
+
+      <p id="plansStatus" class="hint pay-status"></p>
     </div>
   </div>
 

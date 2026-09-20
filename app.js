@@ -11,7 +11,7 @@ function setStatus(msg) {
 }
 
 // =====================================================================
-// --- Vérification (téléphone ou email) + quota d'essais gratuits ---
+// --- Vérification (téléphone ou email) + quota + menu compte ---
 // =====================================================================
 
 let verifyToken = localStorage.getItem('aivc_verify_token') || null;
@@ -22,7 +22,7 @@ function lockMainForm(locked) {
   document.getElementById('mainForm').classList.toggle('locked', locked);
 }
 
-// --- Bascule téléphone / email ---
+// --- Bascule téléphone / email (écran de connexion) ---
 document.querySelectorAll('input[name="otpMode"]').forEach((r) => {
   r.addEventListener('change', () => {
     const mode = document.querySelector('input[name="otpMode"]:checked').value; // 'phone' | 'email'
@@ -40,7 +40,13 @@ document.querySelectorAll('input[name="otpMode"]').forEach((r) => {
   });
 });
 
-// --- Écran paywall (affiché quand le quota gratuit est épuisé) ---
+// --- Menu compte (dans le header) ---
+document.getElementById('accountMenuBtn').addEventListener('click', () => {
+  const dropdown = document.getElementById('accountMenuDropdown');
+  dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+});
+
+// --- Écran paywall (2 vidéos gratuites épuisées) ---
 function showPaywall(identifier) {
   document.getElementById('paywallIdentifier').textContent = identifier || '';
   document.getElementById('paywallStatus').textContent = '';
@@ -51,31 +57,20 @@ function hidePaywall() {
 }
 document.getElementById('paywallCloseBtn').addEventListener('click', hidePaywall);
 
-// Bouton de test (dev uniquement, désactivé côté serveur si ENABLE_DEBUG_ROUTES n'est pas défini) :
-// épuise le quota gratuit de l'identifiant courant, pour tester le paywall/paiement sans
-// consommer 2 vraies générations à chaque fois.
-document.getElementById('debugExhaustBtn').addEventListener('click', async () => {
-  const otpStatus = document.getElementById('otpStatus');
-  try {
-    const res = await fetch(apiUrl('/api/otp/debug-exhaust'), {
-      method: 'POST',
-      headers: { 'x-verify-token': verifyToken || '' },
-    });
-    const data = await res.json();
-    if (res.status === 404) {
-      otpStatus.textContent = 'Route de debug désactivée (ENABLE_DEBUG_ROUTES manquant côté serveur).';
-      return;
-    }
-    if (data.error) throw new Error(data.error);
-    await refreshOtpStatus();
-  } catch (e) {
-    otpStatus.textContent = '❌ Erreur: ' + e.message;
-  }
-});
+// --- Page "Plans" (ouverte depuis le menu compte) ---
+function showPlans() {
+  document.getElementById('plansStatus').textContent = '';
+  document.getElementById('plansOverlay').style.display = 'flex';
+  document.getElementById('accountMenuDropdown').style.display = 'none';
+}
+function hidePlans() {
+  document.getElementById('plansOverlay').style.display = 'none';
+}
+document.getElementById('upgradeBtn').addEventListener('click', showPlans);
+document.getElementById('plansCloseBtn').addEventListener('click', hidePlans);
 
-async function payWithPaypal(plan) {
-  const paywallStatus = document.getElementById('paywallStatus');
-  paywallStatus.textContent = '⏳ Redirection vers PayPal...';
+async function payWithPaypal(plan, statusEl) {
+  statusEl.textContent = '⏳ Redirection vers PayPal...';
   try {
     const res = await fetch(apiUrl('/api/payment/paypal/create'), {
       method: 'POST',
@@ -86,13 +81,12 @@ async function payWithPaypal(plan) {
     if (data.error) throw new Error(data.error);
     window.location.href = data.approveUrl;
   } catch (e) {
-    paywallStatus.textContent = '❌ Erreur PayPal: ' + e.message;
+    statusEl.textContent = '❌ Erreur PayPal: ' + e.message;
   }
 }
 
-async function payWithStripe(plan) {
-  const paywallStatus = document.getElementById('paywallStatus');
-  paywallStatus.textContent = '⏳ Redirection vers Stripe...';
+async function payWithStripe(plan, statusEl) {
+  statusEl.textContent = '⏳ Redirection vers Stripe...';
   try {
     const res = await fetch(apiUrl('/api/payment/stripe/create'), {
       method: 'POST',
@@ -103,13 +97,12 @@ async function payWithStripe(plan) {
     if (data.error) throw new Error(data.error);
     window.location.href = data.checkoutUrl;
   } catch (e) {
-    paywallStatus.textContent = '❌ Erreur Stripe: ' + e.message;
+    statusEl.textContent = '❌ Erreur Stripe: ' + e.message;
   }
 }
 
-async function payWithCmi(plan) {
-  const paywallStatus = document.getElementById('paywallStatus');
-  paywallStatus.textContent = '⏳ Redirection vers la page de paiement CMI...';
+async function payWithCmi(plan, statusEl) {
+  statusEl.textContent = '⏳ Redirection vers la page de paiement CMI...';
   try {
     const res = await fetch(apiUrl('/api/payment/cmi/create'), {
       method: 'POST',
@@ -131,21 +124,24 @@ async function payWithCmi(plan) {
     });
     form.submit();
   } catch (e) {
-    paywallStatus.textContent = '❌ Erreur CMI: ' + e.message;
+    statusEl.textContent = '❌ Erreur CMI: ' + e.message;
   }
 }
 
+// Un seul jeu de boutons ".pay-btn" (réutilisé dans le paywall ET la page Plans) — chaque
+// clic retrouve le paragraphe de statut le plus proche (".pay-status") pour y écrire le résultat.
 document.querySelectorAll('.pay-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const plan = btn.dataset.plan;
     const provider = btn.dataset.provider;
+    const statusEl = btn.closest('.paywall-box').querySelector('.pay-status');
     if (!verifyIdentifier) {
-      document.getElementById('paywallStatus').textContent = '❌ Identifiant non confirmé, revérifiez-vous.';
+      statusEl.textContent = '❌ Identifiant non confirmé, revérifiez-vous.';
       return;
     }
-    if (provider === 'paypal') payWithPaypal(plan);
-    else if (provider === 'stripe') payWithStripe(plan);
-    else if (provider === 'cmi') payWithCmi(plan);
+    if (provider === 'paypal') payWithPaypal(plan, statusEl);
+    else if (provider === 'stripe') payWithStripe(plan, statusEl);
+    else if (provider === 'cmi') payWithCmi(plan, statusEl);
   });
 });
 
@@ -155,15 +151,20 @@ function logout() {
   localStorage.removeItem('aivc_verify_token');
   localStorage.removeItem('aivc_verify_identifier');
   localStorage.removeItem('aivc_verify_type');
+
+  document.getElementById('otpCard').style.display = 'block';
   document.getElementById('otpIdentifierBlock').style.display = 'block';
   document.getElementById('otpCodeBlock').style.display = 'none';
   document.getElementById('otpIdentifier').value = '';
   document.getElementById('otpCode').value = '';
-  document.getElementById('logoutBtn').style.display = 'none';
-  document.getElementById('debugExhaustBtn').style.display = 'none';
   document.getElementById('otpStatus').textContent = '';
+
+  document.getElementById('accountMenu').style.display = 'none';
+  document.getElementById('accountMenuDropdown').style.display = 'none';
+
   lockMainForm(true);
   hidePaywall();
+  hidePlans();
 }
 document.getElementById('logoutBtn').addEventListener('click', logout);
 
@@ -181,21 +182,24 @@ async function refreshOtpStatus() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    document.getElementById('otpIdentifierBlock').style.display = 'none';
-    document.getElementById('otpCodeBlock').style.display = 'none';
-
     const hasAccess = data.freeRemaining > 0 || data.subscriptionActive || data.paidCredits > 0;
 
-    let label;
+    let planLabel;
     if (data.subscriptionActive) {
-      label = `✅ Vérifié (${data.identifier}) — abonnement actif jusqu'au ${new Date(data.subscriptionUntil).toLocaleDateString('fr-FR')}.`;
+      planLabel = `Plan : Mensuel (actif jusqu'au ${new Date(data.subscriptionUntil).toLocaleDateString('fr-FR')})`;
     } else if (data.paidCredits > 0) {
-      label = `✅ Vérifié (${data.identifier}) — ${data.paidCredits} crédit(s) vidéo payé(s) restant(s).`;
+      planLabel = `Plan : Sans engagement — ${data.paidCredits} crédit(s) vidéo restant(s)`;
+    } else if (data.freeRemaining > 0) {
+      planLabel = `Plan : Gratuit — ${data.freeRemaining} vidéo(s) restante(s) sur 2`;
     } else {
-      label = `✅ Vérifié (${data.identifier}) — ${data.freeRemaining} génération(s) gratuite(s) restante(s) sur 2.`;
+      planLabel = 'Plan : Gratuit — quota épuisé';
     }
-    otpStatus.textContent = label;
-    document.getElementById('logoutBtn').style.display = 'inline-block';
+
+    // Bascule l'écran de connexion vers le menu compte, une fois vérifié
+    document.getElementById('otpCard').style.display = 'none';
+    document.getElementById('accountMenu').style.display = 'block';
+    document.getElementById('accountEmail').textContent = data.identifier;
+    document.getElementById('accountPlan').textContent = planLabel;
     document.getElementById('debugExhaustBtn').style.display = 'inline-block';
 
     lockMainForm(!hasAccess);
@@ -257,6 +261,27 @@ document.getElementById('otpVerifyBtn').addEventListener('click', async () => {
     await refreshOtpStatus();
   } catch (e) {
     otpStatus.textContent = '❌ Erreur: ' + e.message;
+  }
+});
+
+// Bouton de test (dev uniquement, désactivé côté serveur si ENABLE_DEBUG_ROUTES n'est pas défini) :
+// épuise le quota gratuit de l'identifiant courant, pour tester le paywall/paiement sans
+// consommer 2 vraies générations à chaque fois.
+document.getElementById('debugExhaustBtn').addEventListener('click', async () => {
+  try {
+    const res = await fetch(apiUrl('/api/otp/debug-exhaust'), {
+      method: 'POST',
+      headers: { 'x-verify-token': verifyToken || '' },
+    });
+    const data = await res.json();
+    if (res.status === 404) {
+      document.getElementById('accountPlan').textContent = 'Route de debug désactivée (ENABLE_DEBUG_ROUTES manquant).';
+      return;
+    }
+    if (data.error) throw new Error(data.error);
+    await refreshOtpStatus();
+  } catch (e) {
+    document.getElementById('accountPlan').textContent = '❌ Erreur: ' + e.message;
   }
 });
 
@@ -435,6 +460,9 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
 
     document.getElementById('resultCard').style.display = 'block';
     document.getElementById('resultVideo').src = apiUrl(data.videoUrl);
+    const downloadLink = document.getElementById('downloadVideoLink');
+    downloadLink.href = apiUrl(data.videoUrl);
+    downloadLink.style.display = 'inline-block';
     document.getElementById('resultScript').value = data.script;
     document.getElementById('resultDescription').value = data.description;
     document.getElementById('resultKeywords').value = data.keywords.join(', ');
@@ -473,6 +501,9 @@ document.getElementById('regenerateVoiceBtn').addEventListener('click', async ()
     if (data.error) throw new Error(data.error);
 
     document.getElementById('resultVideo').src = apiUrl(data.videoUrl);
+    const downloadLink = document.getElementById('downloadVideoLink');
+    downloadLink.href = apiUrl(data.videoUrl);
+    downloadLink.style.display = 'inline-block';
     setStatus('✅ Voix mise à jour');
   } catch (err) {
     setStatus('❌ Erreur: ' + err.message);
@@ -646,6 +677,9 @@ document.getElementById('generateSegmentsBtn').addEventListener('click', async (
     if (data.error) throw new Error(data.error);
 
     document.getElementById('resultVideo').src = apiUrl(data.videoUrl);
+    const downloadLink = document.getElementById('downloadVideoLink');
+    downloadLink.href = apiUrl(data.videoUrl);
+    downloadLink.style.display = 'inline-block';
     segmentsStatus.textContent = '✅ Vidéo finale générée avec vos images par paragraphe.';
     await refreshOtpStatus();
     document.getElementById('resultVideo').scrollIntoView({ behavior: 'smooth' });
