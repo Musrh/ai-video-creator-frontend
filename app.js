@@ -149,6 +149,24 @@ document.querySelectorAll('.pay-btn').forEach((btn) => {
   });
 });
 
+function logout() {
+  verifyToken = null;
+  verifyIdentifier = null;
+  localStorage.removeItem('aivc_verify_token');
+  localStorage.removeItem('aivc_verify_identifier');
+  localStorage.removeItem('aivc_verify_type');
+  document.getElementById('otpIdentifierBlock').style.display = 'block';
+  document.getElementById('otpCodeBlock').style.display = 'none';
+  document.getElementById('otpIdentifier').value = '';
+  document.getElementById('otpCode').value = '';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('debugExhaustBtn').style.display = 'none';
+  document.getElementById('otpStatus').textContent = '';
+  lockMainForm(true);
+  hidePaywall();
+}
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
 async function refreshOtpStatus() {
   const otpStatus = document.getElementById('otpStatus');
   if (!verifyToken) {
@@ -177,6 +195,7 @@ async function refreshOtpStatus() {
       label = `✅ Vérifié (${data.identifier}) — ${data.freeRemaining} génération(s) gratuite(s) restante(s) sur 2.`;
     }
     otpStatus.textContent = label;
+    document.getElementById('logoutBtn').style.display = 'inline-block';
     document.getElementById('debugExhaustBtn').style.display = 'inline-block';
 
     lockMainForm(!hasAccess);
@@ -186,14 +205,7 @@ async function refreshOtpStatus() {
       hidePaywall();
     }
   } catch (e) {
-    verifyToken = null;
-    verifyIdentifier = null;
-    localStorage.removeItem('aivc_verify_token');
-    localStorage.removeItem('aivc_verify_identifier');
-    localStorage.removeItem('aivc_verify_type');
-    document.getElementById('otpIdentifierBlock').style.display = 'block';
-    lockMainForm(true);
-    hidePaywall();
+    logout();
   }
 }
 refreshOtpStatus();
