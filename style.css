@@ -7,7 +7,8 @@ body {
 }
 .app { max-width: 640px; margin: 0 auto; padding: 24px 16px 64px; }
 header { position: relative; }
-.header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.header-actions { display: flex; align-items: flex-start; gap: 8px; flex-shrink: 0; }
 header h1 { margin-bottom: 4px; }
 header p { color: #aaa; margin-top: 0; }
 .card {
@@ -20,7 +21,7 @@ header p { color: #aaa; margin-top: 0; }
 .card h2 { margin-top: 0; font-size: 1.05rem; }
 .card h3 { font-size: 0.95rem; margin-bottom: 4px; }
 label { display: block; margin: 10px 0 6px; font-size: 0.9rem; color: #cfcfe0; }
-textarea, input[type="text"], input[type="url"], input[type="tel"], select {
+textarea, input[type="text"], input[type="url"], input[type="tel"], input[type="email"], select {
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
@@ -72,6 +73,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
 #status { text-align: center; margin-top: 10px; }
 
+/* --- Sélecteur de langue --- */
+.lang-switcher {
+  width: auto;
+  padding: 10px 10px;
+  font-size: 0.85rem;
+  background: #1a1a2e;
+  border: 1px solid #33334d;
+  color: #fff;
+  border-radius: 8px;
+}
+
 /* --- Bouton de téléchargement de la vidéo résultat --- */
 .download-link {
   display: none;
@@ -117,6 +129,7 @@ video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
   z-index: 50;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
+html[dir="rtl"] .account-menu-dropdown { right: auto; left: 0; }
 .account-menu-dropdown p { margin: 0 0 8px; }
 .account-menu-dropdown button {
   width: 100%;
@@ -196,6 +209,7 @@ video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
   padding: 0;
   line-height: 1;
 }
+html[dir="rtl"] .segment .remove-seg { right: auto; left: 6px; }
 .timeline-actions {
   display: flex;
   gap: 10px;
@@ -275,6 +289,7 @@ video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
   padding: 4px 8px;
   border-radius: 50%;
 }
+html[dir="rtl"] .paywall-close { right: auto; left: 14px; }
 .paywall-options {
   display: flex;
   gap: 14px;
@@ -295,3 +310,7 @@ video { width: 100%; border-radius: 10px; margin: 10px 0; background: black; }
   background: linear-gradient(90deg, #6a5cff, #ff5ca8);
   color: #fff;
 }
+
+/* --- Ajustements RTL (arabe) --- */
+html[dir="rtl"] body { direction: rtl; }
+html[dir="rtl"] .tabs label { flex-direction: row-reverse; }

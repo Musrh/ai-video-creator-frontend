@@ -12,17 +12,25 @@
       <div class="header-top">
         <div>
           <h1>🎬 AI Video Creator</h1>
-          <p>Générez une vidéo, sa description, ses mots-clés et ses hashtags à partir d'un sujet.</p>
+          <p data-i18n="appTagline">Générez une vidéo, sa description, ses mots-clés et ses hashtags à partir d'un sujet.</p>
         </div>
 
-        <div id="accountMenu" class="account-menu" style="display:none">
-          <button type="button" id="accountMenuBtn" class="account-menu-btn">👤 Compte ▾</button>
-          <div id="accountMenuDropdown" class="account-menu-dropdown" style="display:none">
-            <p id="accountEmail" class="hint"></p>
-            <p id="accountPlan" class="hint"></p>
-            <button type="button" id="upgradeBtn">⭐ Voir les plans</button>
-            <button type="button" id="debugExhaustBtn" style="display:none">🧪 (Dev) Épuiser mon quota</button>
-            <button type="button" id="logoutBtn">🚪 Se déconnecter</button>
+        <div class="header-actions">
+          <select id="langSwitcher" class="lang-switcher">
+            <option value="fr">Français</option>
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
+          </select>
+
+          <div id="accountMenu" class="account-menu" style="display:none">
+            <button type="button" id="accountMenuBtn" class="account-menu-btn" data-i18n="accountBtn">👤 Compte ▾</button>
+            <div id="accountMenuDropdown" class="account-menu-dropdown" style="display:none">
+              <p id="accountEmail" class="hint"></p>
+              <p id="accountPlan" class="hint"></p>
+              <button type="button" id="upgradeBtn" data-i18n="upgradeBtn">⭐ Voir les plans</button>
+              <button type="button" id="debugExhaustBtn" style="display:none" data-i18n="debugExhaustBtn">🧪 (Dev) Épuiser mon quota</button>
+              <button type="button" id="logoutBtn" data-i18n="logoutBtn">🚪 Se déconnecter</button>
+            </div>
           </div>
         </div>
       </div>
@@ -30,24 +38,24 @@
 
     <main>
       <section class="card" id="otpCard">
-        <h2>0. Vérification</h2>
-        <p class="hint">2 vidéos gratuites par identifiant vérifié. Vérifiez-vous pour débloquer le formulaire ci-dessous.</p>
+        <h2 data-i18n="otpTitle">0. Vérification</h2>
+        <p class="hint" data-i18n="otpDesc">2 vidéos gratuites par identifiant vérifié. Vérifiez-vous pour débloquer le formulaire ci-dessous.</p>
 
         <div class="tabs">
-          <label><input type="radio" name="otpMode" value="phone" checked /> Téléphone (SMS)</label>
-          <label><input type="radio" name="otpMode" value="email" /> Email</label>
+          <label><input type="radio" name="otpMode" value="phone" checked /> <span data-i18n="otpModePhone">Téléphone (SMS)</span></label>
+          <label><input type="radio" name="otpMode" value="email" /> <span data-i18n="otpModeEmail">Email</span></label>
         </div>
 
         <div id="otpIdentifierBlock">
-          <label for="otpIdentifier" id="otpIdentifierLabel">Numéro de téléphone</label>
-          <input type="tel" id="otpIdentifier" placeholder="+212612345678" />
-          <button type="button" id="otpSendBtn">📩 Envoyer le code</button>
+          <label for="otpIdentifier" id="otpIdentifierLabel" data-i18n="otpPhoneLabel">Numéro de téléphone</label>
+          <input type="tel" id="otpIdentifier" data-i18n-placeholder="otpPhonePlaceholder" placeholder="+212612345678" />
+          <button type="button" id="otpSendBtn" data-i18n="otpSendBtn">📩 Envoyer le code</button>
         </div>
 
         <div id="otpCodeBlock" style="display:none">
-          <label for="otpCode">Code reçu</label>
-          <input type="text" id="otpCode" inputmode="numeric" maxlength="6" placeholder="123456" />
-          <button type="button" id="otpVerifyBtn">✅ Vérifier</button>
+          <label for="otpCode" data-i18n="otpCodeLabel">Code reçu</label>
+          <input type="text" id="otpCode" inputmode="numeric" maxlength="6" data-i18n-placeholder="otpCodePlaceholder" placeholder="123456" />
+          <button type="button" id="otpVerifyBtn" data-i18n="otpVerifyBtn">✅ Vérifier</button>
         </div>
 
         <p id="otpStatus" class="hint"></p>
@@ -55,99 +63,99 @@
 
       <form id="mainForm" class="locked">
         <section class="card">
-          <h2>1. Sujet de la vidéo</h2>
-          <label for="subject">Sur quoi doit porter la vidéo ?</label>
-          <textarea id="subject" required placeholder="Ex: Les bienfaits du jeûne intermittent"></textarea>
+          <h2 data-i18n="subjectTitle">1. Sujet de la vidéo</h2>
+          <label for="subject" data-i18n="subjectLabel">Sur quoi doit porter la vidéo ?</label>
+          <textarea id="subject" required data-i18n-placeholder="subjectPlaceholder" placeholder="Ex: Les bienfaits du jeûne intermittent"></textarea>
         </section>
 
         <section class="card">
-          <h2>2. Vidéo source (optionnel)</h2>
-          <p class="hint">Utilisée comme source d'information (transcrite automatiquement) et comme fond visuel. URL YouTube, TikTok ou lien direct (.mp4) acceptés.</p>
+          <h2 data-i18n="sourceTitle">2. Vidéo source (optionnel)</h2>
+          <p class="hint" data-i18n="sourceDesc">Utilisée comme source d'information (transcrite automatiquement) et comme fond visuel. URL YouTube, TikTok ou lien direct (.mp4) acceptés.</p>
           <div class="tabs">
-            <label><input type="radio" name="sourceMode" value="none" checked /> Aucune</label>
-            <label><input type="radio" name="sourceMode" value="url" /> URL</label>
-            <label><input type="radio" name="sourceMode" value="upload" /> Upload</label>
+            <label><input type="radio" name="sourceMode" value="none" checked /> <span data-i18n="sourceModeNone">Aucune</span></label>
+            <label><input type="radio" name="sourceMode" value="url" /> <span data-i18n="sourceModeUrl">URL</span></label>
+            <label><input type="radio" name="sourceMode" value="upload" /> <span data-i18n="sourceModeUpload">Upload</span></label>
           </div>
-          <input type="url" id="videoUrl" placeholder="https://..." style="display:none" />
+          <input type="url" id="videoUrl" data-i18n-placeholder="urlPlaceholder" placeholder="https://..." style="display:none" />
           <input type="file" id="sourceVideo" accept="video/*" style="display:none" />
 
-          <button type="button" id="analyzeBtn" style="display:none">🔍 Lire la vidéo source</button>
+          <button type="button" id="analyzeBtn" style="display:none" data-i18n="analyzeBtn">🔍 Lire la vidéo source</button>
           <p id="analyzeStatus" class="hint"></p>
 
           <div id="inspirationBlock" style="display:none">
-            <p class="hint">Suggestions générées à partir du contenu de la vidéo source, à titre d'inspiration (non utilisées telles quelles) :</p>
-            <label>Description inspirée de la source</label>
+            <p class="hint" data-i18n="inspirationIntro">Suggestions générées à partir du contenu de la vidéo source, à titre d'inspiration (non utilisées telles quelles) :</p>
+            <label data-i18n="inspDescLabel">Description inspirée de la source</label>
             <p id="inspDescription" class="inspiration"></p>
-            <label>Mots-clés inspirés de la source</label>
+            <label data-i18n="inspKeywordsLabel">Mots-clés inspirés de la source</label>
             <p id="inspKeywords" class="inspiration"></p>
-            <label>Hashtags inspirés de la source</label>
+            <label data-i18n="inspHashtagsLabel">Hashtags inspirés de la source</label>
             <p id="inspHashtags" class="inspiration"></p>
           </div>
         </section>
 
         <section class="card">
-          <h2>3. Voix de narration</h2>
+          <h2 data-i18n="voiceTitle">3. Voix de narration</h2>
           <div class="tabs">
-            <label><input type="radio" name="voiceMode" value="existing" checked /> Voix existante</label>
-            <label><input type="radio" name="voiceMode" value="clone" /> Cloner une voix</label>
+            <label><input type="radio" name="voiceMode" value="existing" checked /> <span data-i18n="voiceModeExisting">Voix existante</span></label>
+            <label><input type="radio" name="voiceMode" value="clone" /> <span data-i18n="voiceModeClone">Cloner une voix</span></label>
           </div>
 
           <div id="existingVoiceBlock">
-            <label for="voiceSelect">Choisir une voix</label>
+            <label for="voiceSelect" data-i18n="voiceSelectLabel">Choisir une voix</label>
             <select id="voiceSelect"></select>
           </div>
 
           <div id="cloneVoiceBlock" style="display:none">
-            <label for="voiceName">Nom de la nouvelle voix</label>
-            <input type="text" id="voiceName" placeholder="Ma voix" />
-            <label for="voiceSample">Échantillon audio (fichier à uploader)</label>
+            <label for="voiceName" data-i18n="voiceNameLabel">Nom de la nouvelle voix</label>
+            <input type="text" id="voiceName" data-i18n-placeholder="voiceNamePlaceholder" placeholder="Ma voix" />
+            <label for="voiceSample" data-i18n="voiceSampleLabel">Échantillon audio (fichier à uploader)</label>
             <input type="file" id="voiceSample" accept="audio/*" />
-            <button type="button" id="cloneBtn">Cloner cette voix</button>
+            <button type="button" id="cloneBtn" data-i18n="cloneBtn">Cloner cette voix</button>
             <p id="cloneStatus" class="hint"></p>
           </div>
         </section>
 
-        <button type="submit" id="generateBtn">✨ Générer la vidéo</button>
+        <button type="submit" id="generateBtn" data-i18n="generateBtn">✨ Générer la vidéo</button>
       </form>
 
       <section id="resultCard" class="card" style="display:none">
-        <h2>Résultat</h2>
+        <h2 data-i18n="resultTitle">Résultat</h2>
         <video id="resultVideo" controls></video>
-        <a id="downloadVideoLink" href="#" download="ma-video.mp4" class="download-link" style="display:none">⬇️ Télécharger la vidéo</a>
+        <a id="downloadVideoLink" href="#" download="ma-video.mp4" class="download-link" style="display:none" data-i18n="downloadBtn">⬇️ Télécharger la vidéo</a>
 
-        <label>Script (narration)</label>
+        <label data-i18n="scriptLabel">Script (narration)</label>
         <textarea id="resultScript"></textarea>
 
-        <label>Description</label>
+        <label data-i18n="descriptionLabel">Description</label>
         <textarea id="resultDescription"></textarea>
 
-        <label>Mots-clés (séparés par des virgules)</label>
+        <label data-i18n="keywordsLabel">Mots-clés (séparés par des virgules)</label>
         <input type="text" id="resultKeywords" />
 
-        <label>Hashtags (séparés par des virgules)</label>
+        <label data-i18n="hashtagsLabel">Hashtags (séparés par des virgules)</label>
         <input type="text" id="resultHashtags" />
 
         <hr />
-        <h3>Changer la voix</h3>
-        <p class="hint">Réutilise le script ci-dessus (modifiez-le si besoin) et la même vidéo source, sans tout régénérer.</p>
-        <label for="resultVoiceSelect">Nouvelle voix</label>
+        <h3 data-i18n="regenVoiceTitle">Changer la voix</h3>
+        <p class="hint" data-i18n="regenVoiceDesc">Réutilise le script ci-dessus (modifiez-le si besoin) et la même vidéo source, sans tout régénérer.</p>
+        <label for="resultVoiceSelect" data-i18n="regenVoiceSelectLabel">Nouvelle voix</label>
         <select id="resultVoiceSelect"></select>
-        <button type="button" id="regenerateVoiceBtn">🔁 Régénérer avec cette voix</button>
+        <button type="button" id="regenerateVoiceBtn" data-i18n="regenerateVoiceBtn">🔁 Régénérer avec cette voix</button>
 
         <hr />
-        <h3>Images par paragraphe</h3>
-        <p class="hint">
+        <h3 data-i18n="paragraphImagesTitle">Images par paragraphe</h3>
+        <p class="hint" data-i18n="paragraphImagesDesc">
           Divisez le script ci-dessus en paragraphes (laissez une ligne vide entre chaque partie/sujet), construisez la
           timeline, associez une image à chaque paragraphe, prévisualisez, puis validez pour générer la vidéo finale
-          avec ces images. La durée affichée sur chaque bloc est une <strong>estimation</strong> (la durée réelle dépend
+          avec ces images. La durée affichée sur chaque bloc est une estimation (la durée réelle dépend
           de la voix) — raccourcissez ou allongez le texte d'un bloc pour ajuster son timing. Cette action consomme
           aussi votre quota / accès payant.
         </p>
-        <button type="button" id="buildTimelineBtn">🧩 Construire la timeline depuis le script</button>
+        <button type="button" id="buildTimelineBtn" data-i18n="buildTimelineBtn">🧩 Construire la timeline depuis le script</button>
         <div id="timeline" class="timeline"></div>
         <div class="timeline-actions">
-          <button type="button" id="previewTimelineBtn" style="display:none">▶️ Aperçu (sans générer, gratuit)</button>
-          <button type="button" id="generateSegmentsBtn" style="display:none">✅ Valider et générer la vidéo finale</button>
+          <button type="button" id="previewTimelineBtn" style="display:none" data-i18n="previewTimelineBtn">▶️ Aperçu (sans générer, gratuit)</button>
+          <button type="button" id="generateSegmentsBtn" style="display:none" data-i18n="generateSegmentsBtn">✅ Valider et générer la vidéo finale</button>
         </div>
         <p id="segmentsStatus" class="hint"></p>
       </section>
@@ -160,26 +168,23 @@
   <div id="paywallOverlay" class="paywall-overlay" style="display:none">
     <div class="paywall-box">
       <button type="button" id="paywallCloseBtn" class="paywall-close" title="Fermer">×</button>
-      <h2>📥 Débloquez vos prochaines vidéos</h2>
-      <p class="hint">
-        Cet identifiant (<span id="paywallIdentifier"></span>) a déjà utilisé ses 2 vidéos gratuites.
-        Choisissez une option pour créer et télécharger une nouvelle vidéo.
-      </p>
+      <h2 data-i18n="paywallTitle">📥 Débloquez vos prochaines vidéos</h2>
+      <p class="hint" id="paywallDesc"></p>
 
       <div class="paywall-options">
         <div class="paywall-option">
-          <h3>Sans engagement — 2$/vidéo</h3>
-          <p class="hint">Payez uniquement quand vous en avez besoin, sans abonnement.</p>
-          <button type="button" class="pay-btn" data-plan="single" data-provider="paypal">PayPal</button>
-          <button type="button" class="pay-btn" data-plan="single" data-provider="stripe">Carte bancaire (Stripe)</button>
-          <button type="button" class="pay-btn" data-plan="single" data-provider="cmi">Carte marocaine (CMI)</button>
+          <h3 data-i18n="planSingleTitle">Sans engagement — 2$/vidéo</h3>
+          <p class="hint" data-i18n="planSingleDesc">Payez uniquement quand vous en avez besoin, sans abonnement.</p>
+          <button type="button" class="pay-btn" data-plan="single" data-provider="paypal" data-i18n="payPaypal">PayPal</button>
+          <button type="button" class="pay-btn" data-plan="single" data-provider="stripe" data-i18n="payStripe">Carte bancaire (Stripe)</button>
+          <button type="button" class="pay-btn" data-plan="single" data-provider="cmi" data-i18n="payCmi">Carte marocaine (CMI)</button>
         </div>
         <div class="paywall-option">
-          <h3>Mensuel — 1$/mois</h3>
-          <p class="hint">Vidéos illimitées pendant 30 jours, sans engagement au-delà.</p>
-          <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal">PayPal</button>
-          <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe">Carte bancaire (Stripe)</button>
-          <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi">Carte marocaine (CMI)</button>
+          <h3 data-i18n="planMonthlyTitle">Mensuel — 1$/mois</h3>
+          <p class="hint" data-i18n="planMonthlyDesc">Vidéos illimitées pendant 30 jours, sans engagement au-delà.</p>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal" data-i18n="payPaypal">PayPal</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe" data-i18n="payStripe">Carte bancaire (Stripe)</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi" data-i18n="payCmi">Carte marocaine (CMI)</button>
         </div>
       </div>
 
@@ -191,27 +196,27 @@
   <div id="plansOverlay" class="paywall-overlay" style="display:none">
     <div class="paywall-box">
       <button type="button" id="plansCloseBtn" class="paywall-close" title="Fermer">×</button>
-      <h2>📋 Nos formules</h2>
+      <h2 data-i18n="plansTitle">📋 Nos formules</h2>
 
       <div class="paywall-options">
         <div class="paywall-option">
-          <h3>Gratuit</h3>
-          <p class="hint">2 vidéos incluses par identifiant vérifié (téléphone ou email) — sans carte bancaire.</p>
+          <h3 data-i18n="planFreeTitle">Gratuit</h3>
+          <p class="hint" data-i18n="planFreeDesc">2 vidéos incluses par identifiant vérifié (téléphone ou email) — sans carte bancaire.</p>
         </div>
         <div class="paywall-option">
-          <h3>Sans engagement — 2$/vidéo</h3>
-          <p class="hint">
+          <h3 data-i18n="planSingleTitle">Sans engagement — 2$/vidéo</h3>
+          <p class="hint" data-i18n="planSingleInfoDesc">
             Une fois vos 2 vidéos gratuites utilisées, débloquez le téléchargement d'une vidéo supplémentaire à
             l'unité, sans abonnement. Cette option apparaît directement au moment où vous en avez besoin, lors de la
             création d'une nouvelle vidéo.
           </p>
         </div>
         <div class="paywall-option">
-          <h3>Mensuel — 1$/mois</h3>
-          <p class="hint">Vidéos illimitées pendant 30 jours, sans engagement au-delà.</p>
-          <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal">PayPal</button>
-          <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe">Carte bancaire (Stripe)</button>
-          <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi">Carte marocaine (CMI)</button>
+          <h3 data-i18n="planMonthlyTitle">Mensuel — 1$/mois</h3>
+          <p class="hint" data-i18n="planMonthlyDesc">Vidéos illimitées pendant 30 jours, sans engagement au-delà.</p>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="paypal" data-i18n="payPaypal">PayPal</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="stripe" data-i18n="payStripe">Carte bancaire (Stripe)</button>
+          <button type="button" class="pay-btn" data-plan="subscription" data-provider="cmi" data-i18n="payCmi">Carte marocaine (CMI)</button>
         </div>
       </div>
 
@@ -222,6 +227,7 @@
   <!-- Formulaire technique utilisé pour rediriger vers la page de paiement CMI (soumission réelle, pas fetch) -->
   <form id="cmiRedirectForm" method="POST" style="display:none"></form>
 
+  <script src="translations.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

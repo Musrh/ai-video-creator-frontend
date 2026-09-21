@@ -11,6 +11,48 @@ function setStatus(msg) {
 }
 
 // =====================================================================
+// --- Internationalisation (fr / en / ar) ---
+// =====================================================================
+
+const SUPPORTED_LANGS = ['fr', 'en', 'ar'];
+let currentLang = localStorage.getItem('aivc_lang') || (navigator.language || 'fr').slice(0, 2);
+if (!SUPPORTED_LANGS.includes(currentLang)) currentLang = 'fr';
+
+function t(key, vars) {
+  let str = (I18N[currentLang] && I18N[currentLang][key]) || I18N.fr[key] || key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      str = str.replace(`{${k}}`, v);
+    });
+  }
+  return str;
+}
+
+function applyTranslations() {
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = RTL_LANGS.includes(currentLang) ? 'rtl' : 'ltr';
+
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+
+  // Le label/placeholder du champ identifiant dépend aussi du mode (téléphone/email) sélectionné
+  updateOtpModeLabels();
+}
+
+document.getElementById('langSwitcher').value = currentLang;
+document.getElementById('langSwitcher').addEventListener('change', (e) => {
+  currentLang = e.target.value;
+  localStorage.setItem('aivc_lang', currentLang);
+  applyTranslations();
+  // Reformate les libellés dynamiques déjà affichés (plan, paywall...) dans la nouvelle langue
+  refreshOtpStatus();
+});
+
+// =====================================================================
 // --- Vérification (téléphone ou email) + quota + menu compte ---
 // =====================================================================
 
@@ -22,22 +64,22 @@ function lockMainForm(locked) {
   document.getElementById('mainForm').classList.toggle('locked', locked);
 }
 
-// --- Bascule téléphone / email (écran de connexion) ---
+function updateOtpModeLabels() {
+  const mode = document.querySelector('input[name="otpMode"]:checked').value; // 'phone' | 'email'
+  const input = document.getElementById('otpIdentifier');
+  const label = document.getElementById('otpIdentifierLabel');
+  if (mode === 'email') {
+    input.type = 'email';
+    input.placeholder = t('otpEmailPlaceholder');
+    label.textContent = t('otpEmailLabel');
+  } else {
+    input.type = 'tel';
+    input.placeholder = t('otpPhonePlaceholder');
+    label.textContent = t('otpPhoneLabel');
+  }
+}
 document.querySelectorAll('input[name="otpMode"]').forEach((r) => {
-  r.addEventListener('change', () => {
-    const mode = document.querySelector('input[name="otpMode"]:checked').value; // 'phone' | 'email'
-    const input = document.getElementById('otpIdentifier');
-    const label = document.getElementById('otpIdentifierLabel');
-    if (mode === 'email') {
-      input.type = 'email';
-      input.placeholder = 'vous@exemple.com';
-      label.textContent = 'Adresse email';
-    } else {
-      input.type = 'tel';
-      input.placeholder = '+212612345678';
-      label.textContent = 'Numéro de téléphone';
-    }
-  });
+  r.addEventListener('change', updateOtpModeLabels);
 });
 
 // --- Menu compte (dans le header) ---
@@ -48,7 +90,7 @@ document.getElementById('accountMenuBtn').addEventListener('click', () => {
 
 // --- Écran paywall (2 vidéos gratuites épuisées) ---
 function showPaywall(identifier) {
-  document.getElementById('paywallIdentifier').textContent = identifier || '';
+  document.getElementById('paywallDesc').textContent = t('paywallDesc', { identifier: identifier || '' });
   document.getElementById('paywallStatus').textContent = '';
   document.getElementById('paywallOverlay').style.display = 'flex';
 }
@@ -70,7 +112,7 @@ document.getElementById('upgradeBtn').addEventListener('click', showPlans);
 document.getElementById('plansCloseBtn').addEventListener('click', hidePlans);
 
 async function payWithPaypal(plan, statusEl) {
-  statusEl.textContent = '⏳ Redirection vers PayPal...';
+  statusEl.textContent = t('redirectingPaypal');
   try {
     const res = await fetch(apiUrl('/api/payment/paypal/create'), {
       method: 'POST',
@@ -81,12 +123,12 @@ async function payWithPaypal(plan, statusEl) {
     if (data.error) throw new Error(data.error);
     window.location.href = data.approveUrl;
   } catch (e) {
-    statusEl.textContent = '❌ Erreur PayPal: ' + e.message;
+    statusEl.textContent = t('errPaypal', { message: e.message });
   }
 }
 
 async function payWithStripe(plan, statusEl) {
-  statusEl.textContent = '⏳ Redirection vers Stripe...';
+  statusEl.textContent = t('redirectingStripe');
   try {
     const res = await fetch(apiUrl('/api/payment/stripe/create'), {
       method: 'POST',
@@ -97,12 +139,12 @@ async function payWithStripe(plan, statusEl) {
     if (data.error) throw new Error(data.error);
     window.location.href = data.checkoutUrl;
   } catch (e) {
-    statusEl.textContent = '❌ Erreur Stripe: ' + e.message;
+    statusEl.textContent = t('errStripe', { message: e.message });
   }
 }
 
 async function payWithCmi(plan, statusEl) {
-  statusEl.textContent = '⏳ Redirection vers la page de paiement CMI...';
+  statusEl.textContent = t('redirectingCmi');
   try {
     const res = await fetch(apiUrl('/api/payment/cmi/create'), {
       method: 'POST',
@@ -124,19 +166,17 @@ async function payWithCmi(plan, statusEl) {
     });
     form.submit();
   } catch (e) {
-    statusEl.textContent = '❌ Erreur CMI: ' + e.message;
+    statusEl.textContent = t('errCmi', { message: e.message });
   }
 }
 
-// Un seul jeu de boutons ".pay-btn" (réutilisé dans le paywall ET la page Plans) — chaque
-// clic retrouve le paragraphe de statut le plus proche (".pay-status") pour y écrire le résultat.
 document.querySelectorAll('.pay-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const plan = btn.dataset.plan;
     const provider = btn.dataset.provider;
     const statusEl = btn.closest('.paywall-box').querySelector('.pay-status');
     if (!verifyIdentifier) {
-      statusEl.textContent = '❌ Identifiant non confirmé, revérifiez-vous.';
+      statusEl.textContent = t('planNoIdentifier');
       return;
     }
     if (provider === 'paypal') payWithPaypal(plan, statusEl);
@@ -186,16 +226,15 @@ async function refreshOtpStatus() {
 
     let planLabel;
     if (data.subscriptionActive) {
-      planLabel = `Plan : Mensuel (actif jusqu'au ${new Date(data.subscriptionUntil).toLocaleDateString('fr-FR')})`;
+      planLabel = t('planLabelMonthlyActive', { date: new Date(data.subscriptionUntil).toLocaleDateString(currentLang) });
     } else if (data.paidCredits > 0) {
-      planLabel = `Plan : Sans engagement — ${data.paidCredits} crédit(s) vidéo restant(s)`;
+      planLabel = t('planLabelSinglePaid', { n: data.paidCredits });
     } else if (data.freeRemaining > 0) {
-      planLabel = `Plan : Gratuit — ${data.freeRemaining} vidéo(s) restante(s) sur 2`;
+      planLabel = t('planLabelFreeRemaining', { n: data.freeRemaining });
     } else {
-      planLabel = 'Plan : Gratuit — quota épuisé';
+      planLabel = t('planLabelFreeExhausted');
     }
 
-    // Bascule l'écran de connexion vers le menu compte, une fois vérifié
     document.getElementById('otpCard').style.display = 'none';
     document.getElementById('accountMenu').style.display = 'block';
     document.getElementById('accountEmail').textContent = data.identifier;
@@ -212,15 +251,14 @@ async function refreshOtpStatus() {
     logout();
   }
 }
-refreshOtpStatus();
 
 document.getElementById('otpSendBtn').addEventListener('click', async () => {
-  const mode = document.querySelector('input[name="otpMode"]:checked').value; // 'phone' | 'email'
+  const mode = document.querySelector('input[name="otpMode"]:checked').value;
   const identifier = document.getElementById('otpIdentifier').value.trim();
   const otpStatus = document.getElementById('otpStatus');
-  if (!identifier) { otpStatus.textContent = 'Renseignez ' + (mode === 'email' ? 'un email.' : 'un numéro.'); return; }
+  if (!identifier) { otpStatus.textContent = mode === 'email' ? t('errEmailRequired') : t('errPhoneRequired'); return; }
 
-  otpStatus.textContent = '⏳ Envoi du code...';
+  otpStatus.textContent = t('sendingCode');
   try {
     const res = await fetch(apiUrl('/api/otp/send'), {
       method: 'POST',
@@ -233,18 +271,18 @@ document.getElementById('otpSendBtn').addEventListener('click', async () => {
     verifyIdentifier = identifier;
     verifyType = mode;
     document.getElementById('otpCodeBlock').style.display = 'block';
-    otpStatus.textContent = mode === 'email' ? '✅ Code envoyé par email.' : '✅ Code envoyé par SMS.';
+    otpStatus.textContent = mode === 'email' ? t('codeSentEmail') : t('codeSentSms');
   } catch (e) {
-    otpStatus.textContent = '❌ Erreur: ' + e.message;
+    otpStatus.textContent = t('genericError', { message: e.message });
   }
 });
 
 document.getElementById('otpVerifyBtn').addEventListener('click', async () => {
   const code = document.getElementById('otpCode').value.trim();
   const otpStatus = document.getElementById('otpStatus');
-  if (!code) { otpStatus.textContent = 'Renseignez le code reçu.'; return; }
+  if (!code) { otpStatus.textContent = t('errCodeRequired'); return; }
 
-  otpStatus.textContent = '⏳ Vérification...';
+  otpStatus.textContent = t('verifying');
   try {
     const res = await fetch(apiUrl('/api/otp/verify'), {
       method: 'POST',
@@ -260,13 +298,10 @@ document.getElementById('otpVerifyBtn').addEventListener('click', async () => {
     localStorage.setItem('aivc_verify_type', verifyType);
     await refreshOtpStatus();
   } catch (e) {
-    otpStatus.textContent = '❌ Erreur: ' + e.message;
+    otpStatus.textContent = t('genericError', { message: e.message });
   }
 });
 
-// Bouton de test (dev uniquement, désactivé côté serveur si ENABLE_DEBUG_ROUTES n'est pas défini) :
-// épuise le quota gratuit de l'identifiant courant, pour tester le paywall/paiement sans
-// consommer 2 vraies générations à chaque fois.
 document.getElementById('debugExhaustBtn').addEventListener('click', async () => {
   try {
     const res = await fetch(apiUrl('/api/otp/debug-exhaust'), {
@@ -275,30 +310,33 @@ document.getElementById('debugExhaustBtn').addEventListener('click', async () =>
     });
     const data = await res.json();
     if (res.status === 404) {
-      document.getElementById('accountPlan').textContent = 'Route de debug désactivée (ENABLE_DEBUG_ROUTES manquant).';
+      document.getElementById('accountPlan').textContent = t('debugRouteDisabled');
       return;
     }
     if (data.error) throw new Error(data.error);
     await refreshOtpStatus();
   } catch (e) {
-    document.getElementById('accountPlan').textContent = '❌ Erreur: ' + e.message;
+    document.getElementById('accountPlan').textContent = t('genericError', { message: e.message });
   }
 });
 
-// Retour de paiement (PayPal/Stripe/CMI redirige vers ?payment=success|failed|cancelled|error)
 (function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   const payment = params.get('payment');
   if (!payment) return;
-  const messages = {
-    success: '✅ Paiement confirmé — accès débloqué.',
-    failed: '❌ Le paiement a échoué.',
-    cancelled: 'Paiement annulé.',
-    error: '❌ Une erreur est survenue pendant le paiement.',
+  const keys = {
+    success: 'paymentSuccess',
+    failed: 'paymentFailed',
+    cancelled: 'paymentCancelled',
+    error: 'paymentError',
   };
-  setStatus(messages[payment] || '');
+  setStatus(keys[payment] ? t(keys[payment]) : '');
   window.history.replaceState({}, document.title, window.location.pathname);
 })();
+
+// Applique les traductions puis affiche le bon statut de connexion, une fois tout prêt
+applyTranslations();
+refreshOtpStatus();
 
 // =====================================================================
 
@@ -328,7 +366,7 @@ document.querySelectorAll('input[name="voiceMode"]').forEach((r) => {
 // --- Chargement des voix disponibles (utilisé pour les 2 sélecteurs) ---
 async function loadVoices(selectId, selectedId) {
   const select = document.getElementById(selectId);
-  select.innerHTML = '<option>Chargement...</option>';
+  select.innerHTML = '<option>...</option>';
   try {
     const res = await fetch(apiUrl('/api/voices'));
     const data = await res.json();
@@ -338,7 +376,7 @@ async function loadVoices(selectId, selectedId) {
       .join('');
     if (selectedId) select.value = selectedId;
   } catch (e) {
-    select.innerHTML = `<option value="">Erreur: ${e.message}</option>`;
+    select.innerHTML = `<option value="">${t('genericError', { message: e.message })}</option>`;
   }
 }
 loadVoices('voiceSelect');
@@ -351,11 +389,11 @@ document.getElementById('cloneBtn').addEventListener('click', async () => {
   const cloneStatus = document.getElementById('cloneStatus');
 
   if (!name || !fileInput.files[0]) {
-    cloneStatus.textContent = 'Renseignez un nom et un fichier audio.';
+    cloneStatus.textContent = t('errCloneFields');
     return;
   }
 
-  cloneStatus.textContent = 'Clonage en cours...';
+  cloneStatus.textContent = t('cloningStatus');
   const form = new FormData();
   form.append('name', name);
   form.append('sample', fileInput.files[0]);
@@ -364,14 +402,14 @@ document.getElementById('cloneBtn').addEventListener('click', async () => {
     const res = await fetch(apiUrl('/api/voices/clone'), { method: 'POST', body: form });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    cloneStatus.textContent = `Voix "${data.name}" créée ✅`;
+    cloneStatus.textContent = t('cloneSuccess', { name: data.name });
     await loadVoices('voiceSelect', data.voiceId);
     await loadVoices('resultVoiceSelect', data.voiceId);
     document.querySelector('input[name="voiceMode"][value="existing"]').checked = true;
     document.getElementById('existingVoiceBlock').style.display = 'block';
     document.getElementById('cloneVoiceBlock').style.display = 'none';
   } catch (e) {
-    cloneStatus.textContent = 'Erreur: ' + e.message;
+    cloneStatus.textContent = t('genericError', { message: e.message });
   }
 });
 
@@ -383,17 +421,17 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
   const form = new FormData();
   if (sourceMode === 'url') {
     const url = document.getElementById('videoUrl').value.trim();
-    if (!url) { analyzeStatus.textContent = 'Renseignez une URL.'; return; }
+    if (!url) { analyzeStatus.textContent = t('errUrlRequired'); return; }
     form.append('videoUrl', url);
   } else if (sourceMode === 'upload') {
     const file = document.getElementById('sourceVideo').files[0];
-    if (!file) { analyzeStatus.textContent = 'Choisissez un fichier vidéo.'; return; }
+    if (!file) { analyzeStatus.textContent = t('errFileRequired'); return; }
     form.append('sourceVideo', file);
   } else {
     return;
   }
 
-  analyzeStatus.textContent = '⏳ Lecture et analyse de la vidéo source...';
+  analyzeStatus.textContent = t('analyzingStatus');
   try {
     const res = await fetch(apiUrl('/api/analyze-source'), { method: 'POST', body: form });
     const data = await res.json();
@@ -402,13 +440,13 @@ document.getElementById('analyzeBtn').addEventListener('click', async () => {
     state.sourceFile = data.sourceFile;
     state.sourceInfo = data.transcript;
 
-    document.getElementById('inspDescription').textContent = data.description || '(vide)';
-    document.getElementById('inspKeywords').textContent = (data.keywords || []).join(', ') || '(vide)';
-    document.getElementById('inspHashtags').textContent = (data.hashtags || []).join(' ') || '(vide)';
+    document.getElementById('inspDescription').textContent = data.description || t('emptyValue');
+    document.getElementById('inspKeywords').textContent = (data.keywords || []).join(', ') || t('emptyValue');
+    document.getElementById('inspHashtags').textContent = (data.hashtags || []).join(' ') || t('emptyValue');
     document.getElementById('inspirationBlock').style.display = 'block';
-    analyzeStatus.textContent = '✅ Vidéo analysée — informations réutilisées pour la génération.';
+    analyzeStatus.textContent = t('analyzeSuccess');
   } catch (err) {
-    analyzeStatus.textContent = '❌ Erreur: ' + err.message;
+    analyzeStatus.textContent = t('genericError', { message: err.message });
   }
 });
 
@@ -417,7 +455,7 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('generateBtn');
   btn.disabled = true;
-  setStatus('Génération en cours... (script, voix, montage) cela peut prendre 1-2 minutes');
+  setStatus(t('generatingStatus'));
 
   const subject = document.getElementById('subject').value.trim();
   const sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
@@ -451,7 +489,7 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
       return;
     }
     if (res.status === 401) {
-      setStatus('❌ Vérifiez-vous ci-dessus avant de générer.');
+      setStatus(t('errVerifyBeforeGenerate'));
       return;
     }
     if (data.error) throw new Error(data.error);
@@ -469,11 +507,11 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
     document.getElementById('resultHashtags').value = data.hashtags.join(', ');
     document.getElementById('resultVoiceSelect').value = voiceId;
     resetTimeline();
-    setStatus('✅ Terminé');
+    setStatus(t('generateDone'));
     await refreshOtpStatus();
     document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
   } catch (err) {
-    setStatus('❌ Erreur: ' + err.message);
+    setStatus(t('genericError', { message: err.message }));
   } finally {
     btn.disabled = false;
   }
@@ -486,10 +524,10 @@ document.getElementById('regenerateVoiceBtn').addEventListener('click', async ()
   const voiceId = document.getElementById('resultVoiceSelect').value;
   const subject = document.getElementById('subject').value.trim();
 
-  if (!script) { setStatus('❌ Le script est vide.'); return; }
+  if (!script) { setStatus(t('errScriptEmpty')); return; }
 
   btn.disabled = true;
-  setStatus('🔁 Régénération de la narration et du montage...');
+  setStatus(t('regeneratingStatus'));
 
   try {
     const res = await fetch(apiUrl('/api/regenerate-voice'), {
@@ -504,9 +542,9 @@ document.getElementById('regenerateVoiceBtn').addEventListener('click', async ()
     const downloadLink = document.getElementById('downloadVideoLink');
     downloadLink.href = apiUrl(data.videoUrl);
     downloadLink.style.display = 'inline-block';
-    setStatus('✅ Voix mise à jour');
+    setStatus(t('regenDone'));
   } catch (err) {
-    setStatus('❌ Erreur: ' + err.message);
+    setStatus(t('genericError', { message: err.message }));
   } finally {
     btn.disabled = false;
   }
@@ -541,9 +579,9 @@ function renderTimeline() {
     const div = document.createElement('div');
     div.className = 'segment';
     div.innerHTML = `
-      <button type="button" class="remove-seg" data-i="${i}" title="Supprimer ce paragraphe">×</button>
+      <button type="button" class="remove-seg" data-i="${i}" title="${t('removeSegmentTitle')}">×</button>
       <textarea data-i="${i}">${seg.text}</textarea>
-      <div class="duration">~${dur.toFixed(1)}s (estimation)</div>
+      <div class="duration">${t('durationEstimate', { s: dur.toFixed(1) })}</div>
       ${seg.previewUrl ? `<img class="thumb" src="${seg.previewUrl}" />` : '<div class="thumb"></div>'}
       <input type="file" accept="image/*" data-i="${i}" />
     `;
@@ -555,7 +593,7 @@ function renderTimeline() {
       const i = Number(e.target.dataset.i);
       timelineSegments[i].text = e.target.value;
       const durEl = e.target.parentElement.querySelector('.duration');
-      durEl.textContent = `~${estimateDuration(e.target.value).toFixed(1)}s (estimation)`;
+      durEl.textContent = t('durationEstimate', { s: estimateDuration(e.target.value).toFixed(1) });
     });
   });
 
@@ -583,15 +621,15 @@ function renderTimeline() {
 document.getElementById('buildTimelineBtn').addEventListener('click', () => {
   const script = document.getElementById('resultScript').value.trim();
   const segmentsStatus = document.getElementById('segmentsStatus');
-  if (!script) { segmentsStatus.textContent = '❌ Le script est vide.'; return; }
+  if (!script) { segmentsStatus.textContent = t('errScriptEmptyTimeline'); return; }
 
   const paragraphs = script.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  if (paragraphs.length === 0) { segmentsStatus.textContent = '❌ Aucun paragraphe détecté.'; return; }
+  if (paragraphs.length === 0) { segmentsStatus.textContent = t('errNoParagraphs'); return; }
 
   timelineSegments = paragraphs.map((text) => ({ text, file: null, previewUrl: null }));
   document.getElementById('previewTimelineBtn').style.display = 'inline-block';
   document.getElementById('generateSegmentsBtn').style.display = 'inline-block';
-  segmentsStatus.textContent = `${paragraphs.length} paragraphe(s) détecté(s) — associez une image à chacun.`;
+  segmentsStatus.textContent = t('paragraphsDetected', { count: paragraphs.length });
   renderTimeline();
 });
 
@@ -605,7 +643,7 @@ document.getElementById('previewTimelineBtn').addEventListener('click', () => {
   label.className = 'preview-label';
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.textContent = 'Fermer l\'aperçu';
+  closeBtn.textContent = t('closePreview');
   overlay.appendChild(img);
   overlay.appendChild(label);
   overlay.appendChild(closeBtn);
@@ -618,8 +656,9 @@ document.getElementById('previewTimelineBtn').addEventListener('click', () => {
     if (i >= timelineSegments.length) { cleanup(); return; }
     const seg = timelineSegments[i];
     img.src = seg.previewUrl || '';
-    img.alt = seg.previewUrl ? '' : '(pas encore d\'image pour ce paragraphe)';
-    label.textContent = `Paragraphe ${i + 1}/${timelineSegments.length} — ${seg.text.slice(0, 90)}${seg.text.length > 90 ? '…' : ''}`;
+    img.alt = seg.previewUrl ? '' : t('noImageYetAlt');
+    const preview = seg.text.slice(0, 90) + (seg.text.length > 90 ? '…' : '');
+    label.textContent = t('paragraphLabel', { i: i + 1, n: timelineSegments.length, text: preview });
     const dur = estimateDuration(seg.text);
     timer = setTimeout(() => { i += 1; showNext(); }, dur * 1000);
   }
@@ -640,16 +679,16 @@ document.getElementById('generateSegmentsBtn').addEventListener('click', async (
   const subject = document.getElementById('subject').value.trim();
 
   if (timelineSegments.length === 0) {
-    segmentsStatus.textContent = '❌ Construisez d\'abord la timeline.';
+    segmentsStatus.textContent = t('errBuildTimelineFirst');
     return;
   }
   if (timelineSegments.some((s) => !s.file)) {
-    segmentsStatus.textContent = '❌ Chaque paragraphe doit avoir une image associée.';
+    segmentsStatus.textContent = t('errMissingImages');
     return;
   }
 
   btn.disabled = true;
-  segmentsStatus.textContent = '⏳ Génération finale (narration par paragraphe + montage)... cela peut prendre 1-2 minutes';
+  segmentsStatus.textContent = t('segmentsGenerating');
 
   const form = new FormData();
   form.append('voiceId', voiceId);
@@ -671,7 +710,7 @@ document.getElementById('generateSegmentsBtn').addEventListener('click', async (
       return;
     }
     if (res.status === 401) {
-      segmentsStatus.textContent = '❌ Vérifiez-vous avant de générer.';
+      segmentsStatus.textContent = t('errVerifyBeforeGenerate');
       return;
     }
     if (data.error) throw new Error(data.error);
@@ -680,11 +719,11 @@ document.getElementById('generateSegmentsBtn').addEventListener('click', async (
     const downloadLink = document.getElementById('downloadVideoLink');
     downloadLink.href = apiUrl(data.videoUrl);
     downloadLink.style.display = 'inline-block';
-    segmentsStatus.textContent = '✅ Vidéo finale générée avec vos images par paragraphe.';
+    segmentsStatus.textContent = t('segmentsDone');
     await refreshOtpStatus();
     document.getElementById('resultVideo').scrollIntoView({ behavior: 'smooth' });
   } catch (err) {
-    segmentsStatus.textContent = '❌ Erreur: ' + err.message;
+    segmentsStatus.textContent = t('genericError', { message: err.message });
   } finally {
     btn.disabled = false;
   }
