@@ -379,8 +379,32 @@ async function loadVoices(selectId, selectedId) {
     select.innerHTML = `<option value="">${t('genericError', { message: e.message })}</option>`;
   }
 }
-loadVoices('voiceSelect');
+loadVoices('voiceSelect').then(restorePendingForm);
 loadVoices('resultVoiceSelect');
+
+// Restaure le formulaire sauvegardé juste avant un paiement (voir mainForm submit, cas 402) —
+// nécessaire car le retour de PayPal/Stripe/CMI est un vrai rechargement de page, qui efface
+// tout ce que l'utilisateur avait tapé si on ne le restaure pas explicitement ici.
+function restorePendingForm() {
+  const raw = localStorage.getItem('aivc_pending_form');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (data.subject) document.getElementById('subject').value = data.subject;
+    if (data.sourceMode) {
+      const radio = document.querySelector(`input[name="sourceMode"][value="${data.sourceMode}"]`);
+      if (radio) {
+        radio.checked = true;
+        radio.dispatchEvent(new Event('change'));
+      }
+    }
+    if (data.videoUrl) document.getElementById('videoUrl').value = data.videoUrl;
+    if (data.voiceId) document.getElementById('voiceSelect').value = data.voiceId;
+  } catch {
+    // ignore, formulaire sauvegardé corrompu/illisible
+  }
+  localStorage.removeItem('aivc_pending_form');
+}
 
 // --- Clonage de voix ---
 document.getElementById('cloneBtn').addEventListener('click', async () => {
@@ -485,6 +509,15 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
 
     if (res.status === 402) {
       setStatus('');
+      // On sauvegarde le formulaire AVANT le paywall : payer redirige vers PayPal/Stripe/CMI
+      // puis revient sur cette page — un vrai rechargement complet, qui efface tout l'état
+      // JavaScript en mémoire (dont ce que l'utilisateur avait tapé) si on ne le fait pas.
+      localStorage.setItem('aivc_pending_form', JSON.stringify({
+        subject,
+        sourceMode,
+        videoUrl: document.getElementById('videoUrl').value.trim(),
+        voiceId,
+      }));
       await refreshOtpStatus();
       return;
     }
@@ -494,6 +527,7 @@ document.getElementById('mainForm').addEventListener('submit', async (e) => {
     }
     if (data.error) throw new Error(data.error);
 
+    localStorage.removeItem('aivc_pending_form');
     if (data.sourceFile) state.sourceFile = data.sourceFile;
 
     document.getElementById('resultCard').style.display = 'block';
